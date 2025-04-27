@@ -1,5 +1,5 @@
 blueprint:
-  name: deCONZ (Phoscon) - Philips Hue Tap Dial Switch by SmartHomeGeeks.io
+  name: Philips Hue Tap Dial Switch by SmartHomeGeeks.io
   author: SmartHomeGeeks.io
   description: Integrate Philips Hue Tap Dial Switch into Home Assistant to create
     a powerful remote control, supporting single tap, double tap, hold, and conditional
@@ -12,7 +12,7 @@ blueprint:
         device:
           filter:
             - integration: hue
-              model: RDM002
+              model: Hue tap dial switch (RDM002)
     tap_counter:
       name: Counter Helper
       description: Create a counter helper within Home Assistant to monitor the number
