@@ -1,17 +1,20 @@
 blueprint:
-  name: "Hue Dimmer V2 (RWL022)"
+  name: "Hue Dimmer V2 (RWL022) - Ein-Klick-Steuerung FIX"
   description: >
-    Wähle nur die Entität von Button 1 aus. Die restlichen Buttons werden automatisch erkannt.
+    Wähle einmal das Gerät (über den Batterie-Sensor-Filter) und das Licht. 
+    Die Button-Entitäten werden automatisch über den Namen aufgelöst.
   domain: automation
   input:
-    button_one_entity:
-      name: Button 1 Entität
-      description: Wähle die Entität '...button_1' deines Schalters aus.
+    remote_device:
+      name: Hue Dimmer Switch
+      description: Wähle den Schalter aus.
       selector:
-        entity:
-          filter:
-            - domain: event
-              device_class: button
+        device:
+          integration: hue
+          multiple: false
+          entity:
+            domain: sensor
+            device_class: battery
     light_target:
       name: Licht / Gruppe
       selector:
@@ -35,25 +38,30 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Wir triggern auf alle 4 Button-Entitäten, indem wir den Namen dynamisch bestimmen
-  - platform: state
-    entity_id: !input button_one_entity
-  - platform: state
-    entity_id: 
-      - "{{ (!input button_one_entity).replace('_button_1', '_button_2') }}"
-      - "{{ (!input button_one_entity).replace('_button_1', '_button_3') }}"
-      - "{{ (!input button_one_entity).replace('_button_1', '_button_4') }}"
+  # Wir triggern allgemein auf Events in HA. 
+  # In der Action filtern wir dann, ob das Event zu unserem Gerät gehört.
+  - platform: event
+    event_type: state_changed
 
 action:
   - variables:
-      # Wir holen uns den Event-Typ (z.B. short_release) aus den Attributen
-      event_type: "{{ trigger.to_state.attributes.event_type }}"
-      # Wir bestimmen, welcher Button gedrückt wurde
-      triggered_entity: "{{ trigger.entity_id }}"
-      base_name: "{{ (!input button_one_entity).replace('_button_1', '') }}"
+      # FIX: Wir holen uns die Device-ID vom Input
+      selected_device: !input remote_device
+      # Wir finden die Button-1 Entität dieses Geräts, um den Basis-Namen zu haben
+      # Das ist der sicherste Weg, um die "Ein-Klick-Logik" zu behalten
+      button_1_entity: "{{ device_entities(selected_device) | select('search', 'button_1') | first }}"
+      base_name: "{{ button_1_entity.replace('_button_1', '') }}"
+      
+      # Event-Daten extrahieren
+      triggered_entity: "{{ trigger.event.data.entity_id }}"
+      event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state is not none }}"
+
+  # Wir prüfen zuerst, ob die triggernde Entität überhaupt zu unserem Schalter gehört
+  - condition: template
+    value_template: "{{ triggered_entity.startswith(base_name) }}"
 
   - choose:
-      # BUTTON 1
+      # Button 1: Toggle / Long Press
       - conditions: "{{ triggered_entity == base_name ~ '_button_1' }}"
         sequence:
           - choose:
@@ -64,7 +72,7 @@ action:
               - conditions: "{{ event_type == 'long_press' }}"
                 sequence: !input button_1_long
 
-      # BUTTON 2 (Heller)
+      # Button 2: Heller (5%)
       - conditions:
           - "{{ triggered_entity == base_name ~ '_button_2' }}"
           - "{{ event_type in ['initial_press', 'repeat'] }}"
@@ -74,7 +82,7 @@ action:
             data:
               brightness_step_pct: 5
 
-      # BUTTON 3 (Dunkler)
+      # Button 3: Dunkler (5%)
       - conditions:
           - "{{ triggered_entity == base_name ~ '_button_3' }}"
           - "{{ event_type in ['initial_press', 'repeat'] }}"
@@ -84,7 +92,7 @@ action:
             data:
               brightness_step_pct: -5
 
-      # BUTTON 4
+      # Button 4: Custom
       - conditions: "{{ triggered_entity == base_name ~ '_button_4' }}"
         sequence:
           - choose:
