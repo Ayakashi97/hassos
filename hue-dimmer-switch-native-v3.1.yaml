@@ -1,5 +1,5 @@
 blueprint:
-  name: Native Hue - RWL022 Smooth Dimming (Selection Fixed)
+  name: Native Hue - RWL022 Smooth Dimming
   description: |
     Control lights with a Philips Hue Dimmer Switch (RWL022) via NATIVE Hue integration.
     
