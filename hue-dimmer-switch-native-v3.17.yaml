@@ -1,46 +1,33 @@
 blueprint:
-  name: Hue RWL022 Toggle and Smooth Dimmer (Fixed)
-  description: Philips Hue Dimmer Switch v2 (RWL022) Controller with Event Entities
+  name: Hue RWL022 (V2) Single Device Selector
+  description: Wähle nur den Schalter aus. Erwartet die offizielle Philips Hue Integration.
   domain: automation
   input:
-    button_1_entity:
-      name: Button 1 Event Entity
+    hue_device:
+      name: Hue Dimmer Switch
+      description: Wähle den Philips Hue Dimmer Schalter (v2) aus.
       selector:
-        entity:
-          domain: event
-    button_2_entity:
-      name: Button 2 Event Entity
-      selector:
-        entity:
-          domain: event
-    button_3_entity:
-      name: Button 3 Event Entity
-      selector:
-        entity:
-          domain: event
-    button_4_entity:
-      name: Button 4 Event Entity
-      selector:
-        entity:
-          domain: event
+        device:
+          filter:
+            - model: RWL022
     target_light:
-      name: Target Light(s)
+      name: Ziel-Lampen
       selector:
         target:
           entity:
             domain: light
     button_1_long:
-      name: Button 1 Long Press Action
+      name: Taste 1 (Ein/Aus) - Langer Druck
       default: []
       selector:
         action:
     button_4_short:
-      name: Button 4 Short Press Action
+      name: Taste 4 (Hue Logo) - Kurzer Druck
       default: []
       selector:
         action:
     button_4_long:
-      name: Button 4 Long Press Action
+      name: Taste 4 (Hue Logo) - Langer Druck
       default: []
       selector:
         action:
@@ -49,59 +36,93 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  - platform: state
-    entity_id: !input button_1_entity
-    to: "short_release"
+  # Button 1 (An/Aus)
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: short_release
+    subtype: button_1
     id: btn1_short
-  - platform: state
-    entity_id: !input button_1_entity
-    to: "long_release"
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: long_release
+    subtype: button_1
     id: btn1_long
-  - platform: state
-    entity_id: !input button_2_entity
-    to: "short_release"
+
+  # Button 2 (Heller)
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: short_release
+    subtype: button_2
     id: btn2_short
-  - platform: state
-    entity_id: !input button_2_entity
-    to: "initial_press"
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: initial_press
+    subtype: button_2
     id: btn2_long
-  - platform: state
-    entity_id: !input button_2_entity
-    to: "long_release"
-    id: stop_loop
-  - platform: state
-    entity_id: !input button_3_entity
-    to: "short_release"
+
+  # Button 3 (Dunkler)
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: short_release
+    subtype: button_3
     id: btn3_short
-  - platform: state
-    entity_id: !input button_3_entity
-    to: "initial_press"
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: initial_press
+    subtype: button_3
     id: btn3_long
-  - platform: state
-    entity_id: !input button_3_entity
-    to: "long_release"
-    id: stop_loop
-  - platform: state
-    entity_id: !input button_4_entity
-    to: "short_release"
+
+  # Button 4 (Hue Taste)
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: short_release
+    subtype: button_4
     id: btn4_short
-  - platform: state
-    entity_id: !input button_4_entity
-    to: "long_release"
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: long_release
+    subtype: button_4
     id: btn4_long
+
+  # Stop-Trigger für das Dimmen (beim Loslassen von Button 2 oder 3)
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: long_release
+    subtype: button_2
+    id: stop_loop
+  - platform: device
+    domain: hue
+    device_id: !input hue_device
+    type: long_release
+    subtype: button_3
+    id: stop_loop
 
 action:
   - choose:
+      # Taste 1 Toggle
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn1_short' }}"
         sequence:
           - action: light.toggle
             target: !input target_light
+
+      # Taste 1 Long Press (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn1_long' }}"
         sequence: !input button_1_long
+
+      # Taste 2 (Heller) - Kurz
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_short' }}"
@@ -110,6 +131,8 @@ action:
             target: !input target_light
             data:
               brightness_step_pct: 10
+
+      # Taste 2 (Heller) - Lang (Dimmen-Schleife)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_long' }}"
@@ -126,6 +149,8 @@ action:
                     transition: 0.5
                 - delay:
                     milliseconds: 500
+
+      # Taste 3 (Dunkler) - Kurz
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_short' }}"
@@ -134,6 +159,8 @@ action:
             target: !input target_light
             data:
               brightness_step_pct: -10
+
+      # Taste 3 (Dunkler) - Lang (Dimmen-Schleife)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_long' }}"
@@ -150,15 +177,21 @@ action:
                     transition: 0.5
                 - delay:
                     milliseconds: 500
+
+      # Taste 4 Kurz (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn4_short' }}"
         sequence: !input button_4_short
+
+      # Taste 4 Lang (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn4_long' }}"
         sequence: !input button_4_long
+
+      # Stoppt die Schleife durch mode: restart
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'stop_loop' }}"
-        sequence: [] # Tut nichts, bricht aber durch 'mode: restart' die Schleife ab.
+        sequence: []
