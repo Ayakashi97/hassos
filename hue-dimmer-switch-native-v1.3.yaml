@@ -1,0 +1,139 @@
+blueprint:
+  name: "Hue Dimmer V2 (RWL022)"
+  description: >
+    # 🎮 Ultimate Smooth Control for Hue Dimmer V2 (RWL022)
+    
+    **V6.0 FIXED:** This version resolves the issue where Buttons 2 & 3 did nothing. 
+    It now correctly ignores hardware repeat signals to allow the internal 
+    smooth-dimming loop to run without interruption.
+
+    ### 🔑 Key Features:
+    * **Anti-Stutter Logic:** Specifically ignores 'repeat' events from the remote 
+      so the internal High-Speed loop can glide perfectly.
+    * **Safety First:** Hard limit of 20 steps prevents runaway dimming.
+    * **Restart Mode:** Ensures the dimming stops the exact millisecond you release the button.
+
+    ### ⌨️ Button Mapping:
+    1. **Button 1 (Top):** Short: Toggle | Long: Custom.
+    2. **Button 2 (Sun Up):** Hold: Smooth Brighten.
+    3. **Button 3 (Sun Down):** Hold: Smooth Dim.
+    4. **Button 4 (Hue Logo):** Short/Long: Custom.
+
+  domain: automation
+  input:
+    button_1:
+      name: Button 1 Entity
+      selector: { entity: { filter: { domain: event } } }
+    button_2:
+      name: Button 2 Entity
+      selector: { entity: { filter: { domain: event } } }
+    button_3:
+      name: Button 3 Entity
+      selector: { entity: { filter: { domain: event } } }
+    button_4:
+      name: Button 4 Entity
+      selector: { entity: { filter: { domain: event } } }
+    light_target:
+      name: Light Target
+      selector: { target: { entity: { domain: light } } }
+    dim_step:
+      name: Dimming Step Size
+      default: 10
+      selector: { number: { min: 1, max: 25, unit_of_measurement: "%" } }
+    dim_transition:
+      name: Transition Time (Smoothness)
+      default: 0.4
+      selector: { number: { min: 0.1, max: 1, step: 0.1, unit_of_measurement: "s" } }
+    button_1_long:
+      name: Button 1 - Long Press
+      default: []
+      selector: { action: {} }
+    button_4_short:
+      name: Button 4 - Short Press
+      default: []
+      selector: { action: {} }
+    button_4_long:
+      name: Button 4 - Long Press
+      default: []
+      selector: { action: {} }
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: 
+      - !input button_1
+      - !input button_2
+      - !input button_3
+      - !input button_4
+
+# CRITICAL FIX: Ignore 'repeat' signals from hardware so they don't restart the automation
+condition:
+  - "{{ trigger.to_state.attributes.event_type != 'repeat' }}"
+
+action:
+  - variables:
+      b1: !input button_1
+      b2: !input button_2
+      b3: !input button_3
+      b4: !input button_4
+      step: !input dim_step
+      trans: !input dim_transition
+      trigger_entity: "{{ trigger.entity_id }}"
+      event_type: "{{ trigger.to_state.attributes.event_type }}"
+
+  - choose:
+      # BUTTON 1
+      - conditions: "{{ trigger_entity == b1 }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence:
+                  - service: light.toggle
+                    target: !input light_target
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_1_long
+
+      # BUTTON 2 (SMOOTH BRIGHTEN)
+      - conditions:
+          - "{{ trigger_entity == b2 }}"
+          - "{{ event_type == 'initial_press' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 20 }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: "{{ step }}"
+                    transition: "{{ trans }}"
+                - delay: "{{ trans }}"
+
+      # BUTTON 3 (SMOOTH DIM)
+      - conditions:
+          - "{{ trigger_entity == b2 or trigger_entity == b3 }}"
+          - "{{ event_type == 'initial_press' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 20 }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: "{{ step * -1 }}"
+                    transition: "{{ trans }}"
+                - delay: "{{ trans }}"
+
+      # BUTTON 4
+      - conditions: "{{ trigger_entity == b4 }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence: !input button_4_short
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_4_long
