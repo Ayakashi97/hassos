@@ -1,17 +1,25 @@
 blueprint:
-  name: Native Hue - Philips Hue Dimmer Switch RWL022 (Fixed Style)
+  name: Native Hue - Philips Hue Dimmer Switch RWL022 (Tap Dial Style)
   description: |
     Control your home using the Philips Hue Dimmer Switch (v2 / RWL022) via the NATIVE Hue integration.
-    This uses the specific model filter format that works with your other switches.
+    This uses the specific model filter format and 'device' input key for consistency.
+    
+    Supported: Short Press and Long Press (on release) for all 4 buttons.
   domain: automation
   input:
-    device: # Changed from 'remote' to match your working style
+    device: # Using 'device' as requested for consistency
       name: Philips Hue Dimmer Switch
       selector:
         device:
           filter:
             - integration: hue
               model: Hue dimmer switch (RWL022)
+            - integration: hue
+              model: RWL022
+          # Adding the battery entity check ensures lamps are hidden
+          entity:
+            domain: sensor
+            device_class: battery
 
     # Button 1: Power (Top)
     button_1_short:
@@ -67,7 +75,7 @@ max_exceeded: silent
 trigger:
   - platform: device
     domain: hue
-    device_id: !input device # Reference the 'device' input key
+    device_id: !input device
     type: remote_button_short_release
     id: "short"
   - platform: device
@@ -83,21 +91,25 @@ action:
       press_type: "{{ trigger.id }}"
 
   - choose:
+      # Button 1
       - conditions: "{{ button_id == 1 and press_type == 'short' }}"
         sequence: !input button_1_short
       - conditions: "{{ button_id == 1 and press_type == 'long' }}"
         sequence: !input button_1_long
 
+      # Button 2
       - conditions: "{{ button_id == 2 and press_type == 'short' }}"
         sequence: !input button_2_short
       - conditions: "{{ button_id == 2 and press_type == 'long' }}"
         sequence: !input button_2_long
 
+      # Button 3
       - conditions: "{{ button_id == 3 and press_type == 'short' }}"
         sequence: !input button_3_short
       - conditions: "{{ button_id == 3 and press_type == 'long' }}"
         sequence: !input button_3_long
 
+      # Button 4
       - conditions: "{{ button_id == 4 and press_type == 'short' }}"
         sequence: !input button_4_short
       - conditions: "{{ button_id == 4 and press_type == 'long' }}"
