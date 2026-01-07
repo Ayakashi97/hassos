@@ -1,15 +1,16 @@
 blueprint:
-  name: Native Hue - RWL022 Final Fix (Toggle & Smooth Dim)
+  name: Hue RWL022 Toggle and Smooth Dimmer
   description: |
-    Control lights with a Philips Hue Dimmer Switch (RWL022) via NATIVE Hue integration.
-    
-    Fixed Logic:
-    - Button 1 Short: Always toggles the Target Light(s).
-    - Button 2/3: Smooth dimming for Target Light(s) (Hold to fade, Tap to step).
-    
-    Customizable:
-    - Button 1 Long Press.
-    - Button 4 Short & Long Press.
+    A comprehensive controller for the Philips Hue Dimmer Switch (v2 / RWL022) 
+    using the native Philips Hue integration.
+
+    Features:
+    - Button 1 (Top): Hardcoded to toggle 'Target Light(s)' on short press. Customizable long press.
+    - Button 2 & 3 (Center): Tap to step brightness or hold for smooth continuous dimming.
+    - Button 4 (Bottom): Fully customizable short and long press actions.
+    - Optimized Selector: Only shows RWL022 devices and automatically hides lamps.
+
+    Required Hardware: Philips Hue Dimmer Switch model RWL022 connected via the Hue Bridge.
   domain: automation
   input:
     device:
@@ -18,12 +19,13 @@ blueprint:
         device:
           filter:
             - integration: hue
+              model: "Hue dimmer switch (RWL022)"
           entity:
             domain: sensor
             device_class: battery
     target_light:
       name: Target Light(s)
-      description: These lights will be toggled by Button 1 and dimmed by Buttons 2 & 3.
+      description: The lights controlled by the Power Toggle (Button 1) and Dimming (Buttons 2 & 3).
       selector:
         target:
           entity:
@@ -31,22 +33,22 @@ blueprint:
 
     # Custom Action Slots
     button_1_long:
-      name: "Button 1 (Power) - Long Press"
+      name: Button 1 (Power) - Long Press Action
       default: []
       selector:
         action:
     button_4_short:
-      name: "Button 4 (Hue Logo) - Short Press"
+      name: Button 4 (Hue Logo) - Short Press Action
       default: []
       selector:
         action:
     button_4_long:
-      name: "Button 4 (Hue Logo) - Long Press"
+      name: Button 4 (Hue Logo) - Long Press Action
       default: []
       selector:
         action:
 
-mode: restart # Stoppt Dimmen sofort beim Loslassen
+mode: restart
 max_exceeded: silent
 
 trigger:
@@ -54,78 +56,76 @@ trigger:
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_short_release
+    type: short_release
     subtype: button_1
-    id: "1_short"
+    id: "1_s"
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_long_release
+    type: long_release
     subtype: button_1
-    id: "1_long"
+    id: "1_l"
 
   # Button 2
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_short_release
+    type: short_release
     subtype: button_2
-    id: "2_short"
+    id: "2_s"
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_initial_press
+    type: initial_press
     subtype: button_2
-    id: "2_hold"
+    id: "2_h"
 
   # Button 3
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_short_release
+    type: short_release
     subtype: button_3
-    id: "3_short"
+    id: "3_s"
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_initial_press
+    type: initial_press
     subtype: button_3
-    id: "3_hold"
+    id: "3_h"
 
   # Button 4
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_short_release
+    type: short_release
     subtype: button_4
-    id: "4_short"
+    id: "4_s"
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_long_release
+    type: long_release
     subtype: button_4
-    id: "4_long"
+    id: "4_l"
 
 action:
   - choose:
-      # TASTE 1: Festgelegter Toggle
-      - conditions: "{{ trigger.id == '1_short' }}"
+      # BUTTON 1: Power Toggle
+      - conditions: "{{ trigger.id == '1_s' }}"
         sequence:
           - service: light.toggle
             target: !input target_light
-
-      # TASTE 1: Frei wählbar (Long)
-      - conditions: "{{ trigger.id == '1_long' }}"
+      - conditions: "{{ trigger.id == '1_l' }}"
         sequence: !input button_1_long
 
-      # TASTE 2: Heller (Tap = 10%, Hold = Smooth Loop)
-      - conditions: "{{ trigger.id == '2_short' }}"
+      # BUTTON 2: Smooth Brighten
+      - conditions: "{{ trigger.id == '2_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
             data:
               brightness_step_pct: 10
-      - conditions: "{{ trigger.id == '2_hold' }}"
+      - conditions: "{{ trigger.id == '2_h' }}"
         sequence:
           - repeat:
               while:
@@ -139,14 +139,14 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # TASTE 3: Dunkler (Tap = -10%, Hold = Smooth Loop)
-      - conditions: "{{ trigger.id == '3_short' }}"
+      # BUTTON 3: Smooth Dim
+      - conditions: "{{ trigger.id == '3_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
             data:
               brightness_step_pct: -10
-      - conditions: "{{ trigger.id == '3_hold' }}"
+      - conditions: "{{ trigger.id == '3_h' }}"
         sequence:
           - repeat:
               while:
@@ -160,10 +160,8 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # TASTE 4: Frei wählbar (Short)
-      - conditions: "{{ trigger.id == '4_short' }}"
+      # BUTTON 4: Hue Logo
+      - conditions: "{{ trigger.id == '4_s' }}"
         sequence: !input button_4_short
-
-      # TASTE 4: Frei wählbar (Long)
-      - conditions: "{{ trigger.id == '4_long' }}"
+      - conditions: "{{ trigger.id == '4_l' }}"
         sequence: !input button_4_long
