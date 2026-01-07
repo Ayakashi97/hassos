@@ -1,64 +1,64 @@
 blueprint:
-  name: Native Hue - Multi-Model Dimmer Switch (RWL020/021/022)
+  name: Native Hue - Philips Hue Dimmer Switch RWL022
   description: |
-    Steuerung für ALLE Philips Hue Dimmer Schalter über die NATIVE Hue Integration.
-    Unterstützt RWL020 (US v1), RWL021 (EU v1) und RWL022 (v2 mit Hue-Button).
+    Control your home using the Philips Hue Dimmer Switch (RWL022 - v2 with the 'hue' logo) 
+    via the NATIVE Hue integration.
     
-    Aktionen: Kurzer Druck und langes Halten (Release) für alle 4 Tasten.
+    This version supports Short Press and Long Press (on release) for all 4 buttons.
   domain: automation
   input:
     remote:
-      name: Philips Hue Dimmer Schalter
-      description: Wähle den Schalter aus (Egal ob v1 oder v2).
+      name: Hue Dimmer Switch (RWL022)
+      description: Select the RWL022 device.
       selector:
         device:
           integration: hue
-          # Wir lassen das Model weg, damit alle 3 Typen wählbar sind
-          
-    # TASTE 1 (Ganz oben: On / Power)
-    btn_1_short:
-      name: "Taste 1 - Kurz"
+          model: RWL022
+
+    # Button 1: Power
+    button_1_short:
+      name: "Button 1 (Power) - Short Press"
       default: []
       selector:
         action:
-    btn_1_long:
-      name: "Taste 1 - Lang (Halten)"
+    button_1_long:
+      name: "Button 1 (Power) - Long Press"
       default: []
       selector:
         action:
 
-    # TASTE 2 (Oben Mitte: Heller)
-    btn_2_short:
-      name: "Taste 2 - Kurz"
+    # Button 2: Brighten
+    button_2_short:
+      name: "Button 2 (Brighten) - Short Press"
       default: []
       selector:
         action:
-    btn_2_long:
-      name: "Taste 2 - Lang (Halten)"
-      default: []
-      selector:
-        action:
-
-    # TASTE 3 (Unten Mitte: Dunkler)
-    btn_3_short:
-      name: "Taste 3 - Kurz"
-      default: []
-      selector:
-        action:
-    btn_3_long:
-      name: "Taste 3 - Lang (Halten)"
+    button_2_long:
+      name: "Button 2 (Brighten) - Long Press"
       default: []
       selector:
         action:
 
-    # TASTE 4 (Ganz unten: Off / Hue Logo)
-    btn_4_short:
-      name: "Taste 4 - Kurz"
+    # Button 3: Dim
+    button_3_short:
+      name: "Button 3 (Dim) - Short Press"
       default: []
       selector:
         action:
-    btn_4_long:
-      name: "Taste 4 - Lang (Halten)"
+    button_3_long:
+      name: "Button 3 (Dim) - Long Press"
+      default: []
+      selector:
+        action:
+
+    # Button 4: Hue Logo
+    button_4_short:
+      name: "Button 4 (Hue Logo) - Short Press"
+      default: []
+      selector:
+        action:
+    button_4_long:
+      name: "Button 4 (Hue Logo) - Long Press"
       default: []
       selector:
         action:
@@ -80,31 +80,31 @@ trigger:
 
 action:
   - variables:
-      # Die Button-ID (subtype) wird vom Trigger geliefert (1, 2, 3 oder 4)
+      # Extracting button number and press type from the trigger
       button_id: "{{ trigger.subtype }}"
       press_type: "{{ trigger.id }}"
 
   - choose:
-      # Taste 1
+      # Button 1 (Power)
       - conditions: "{{ button_id == 1 and press_type == 'short' }}"
-        sequence: !input btn_1_short
+        sequence: !input button_1_short
       - conditions: "{{ button_id == 1 and press_type == 'long' }}"
-        sequence: !input btn_1_long
+        sequence: !input button_1_long
 
-      # Taste 2
+      # Button 2 (Brighten)
       - conditions: "{{ button_id == 2 and press_type == 'short' }}"
-        sequence: !input btn_2_short
+        sequence: !input button_2_short
       - conditions: "{{ button_id == 2 and press_type == 'long' }}"
-        sequence: !input btn_2_long
+        sequence: !input button_2_long
 
-      # Taste 3
+      # Button 3 (Dim)
       - conditions: "{{ button_id == 3 and press_type == 'short' }}"
-        sequence: !input btn_3_short
+        sequence: !input button_3_short
       - conditions: "{{ button_id == 3 and press_type == 'long' }}"
-        sequence: !input btn_3_long
+        sequence: !input button_3_long
 
-      # Taste 4
+      # Button 4 (Hue Logo)
       - conditions: "{{ button_id == 4 and press_type == 'short' }}"
-        sequence: !input btn_4_short
+        sequence: !input button_4_short
       - conditions: "{{ button_id == 4 and press_type == 'long' }}"
-        sequence: !input btn_4_long
+        sequence: !input button_4_long
