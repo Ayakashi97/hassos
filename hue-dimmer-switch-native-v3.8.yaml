@@ -1,35 +1,60 @@
 blueprint:
-  name: Hue RWL022 Toggle and Smooth Dimmer
+  name: Hue RWL022 Toggle and Smooth Dimmer (Event-Based)
   description: |
     ### Philips Hue Dimmer Switch (RWL022) Controller
     This blueprint provides full control over the Hue Dimmer Switch v2 using the official Philips Hue integration. 
     It is specifically designed for the RWL022 model (with the 'hue' logo on the bottom button).
 
+    **Compatibility:** Works with the newest Hue Integration (2024+) that uses Event Entities.
+
     **Functionality:**
-    * **Button 1 (Top):** * *Short Press:* Hardcoded to Toggle the selected 'Target Light(s)'.
+    * **Button 1 (Top):** 
+        * *Short Press:* Toggles the selected light(s).
         * *Long Press:* Customizable action.
-    * **Button 2 (Brighten):** * *Short Press:* Increases brightness by 10%.
+    * **Button 2 (Brighten):** 
+        * *Short Press:* Increases brightness by 10%.
         * *Long Press (Hold):* Continuously increases brightness smoothly until released.
-    * **Button 3 (Dim):** * *Short Press:* Decreases brightness by 10%.
+    * **Button 3 (Dim):** 
+        * *Short Press:* Decreases brightness by 10%.
         * *Long Press (Hold):* Continuously decreases brightness smoothly until released.
-    * **Button 4 (Bottom):** * *Short & Long Press:* Fully customizable actions (e.g., Scenes, Scripts).
+    * **Button 4 (Bottom):** 
+        * *Short & Long Press:* Fully customizable actions (e.g., Scenes, Scripts).
 
     **Technical Implementation:**
-    * Uses the 'Battery-Filter' to ensure only remotes are selectable and all Hue lamps are hidden.
-    * Uses `mode: restart` to instantly kill the dimming loop as soon as you release the button.
-    * Uses native event-matching for the 'button_1' to 'button_4' subtypes.
+    * Uses Event Entities for button detection (state-based triggers).
+    * Uses `mode: restart` to instantly cancel dimming when button is released.
+    * Supports smooth transitions with configurable delays.
+
   domain: automation
   input:
-    device:
-      name: Philips Hue Dimmer Switch
+    button_1_entity:
+      name: Button 1 Event Entity
+      description: Select the "Button 1" event entity from your Hue Dimmer Switch
       selector:
-        device:
-          filter:
-            - integration: hue
-          # This entity check removes all lamps (Bedroom 1-5) from the list
-          entity:
-            domain: sensor
-            device_class: battery
+        entity:
+          domain: event
+    
+    button_2_entity:
+      name: Button 2 Event Entity
+      description: Select the "Button 2" (Brighten) event entity
+      selector:
+        entity:
+          domain: event
+    
+    button_3_entity:
+      name: Button 3 Event Entity
+      description: Select the "Button 3" (Dim) event entity
+      selector:
+        entity:
+          domain: event
+    
+    button_4_entity:
+      name: Button 4 Event Entity
+      description: Select the "Button 4" (Hue Logo) event entity
+      selector:
+        entity:
+          domain: event
+
     target_light:
       name: Target Light(s)
       description: These lights are controlled by the Power Toggle (Button 1) and Dimming (Buttons 2 & 3).
@@ -38,17 +63,40 @@ blueprint:
           entity:
             domain: light
 
+    brightness_step:
+      name: Brightness Step Percentage
+      description: How much brightness changes per short press (1-50%)
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+          unit_of_measurement: "%"
+
+    dimming_interval:
+      name: Smooth Dimming Interval
+      description: Delay in seconds between brightness steps during long hold (0.1-1.0s)
+      default: 0.5
+      selector:
+        number:
+          min: 0.1
+          max: 1.0
+          step: 0.1
+          unit_of_measurement: "s"
+
     # Customizable Action Slots
     button_1_long:
       name: Button 1 (Power) - Long Press Action
       default: []
       selector:
         action:
+
     button_4_short:
       name: Button 4 (Hue Logo) - Short Press Action
       default: []
       selector:
         action:
+
     button_4_long:
       name: Button 4 (Hue Logo) - Long Press Action
       default: []
@@ -59,73 +107,69 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Trigger mapping based on native hue event types
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: short_release
-    subtype: button_1
+  # BUTTON 1: Power Toggle
+  - platform: state
+    entity_id: !input button_1_entity
+    to: "short_release"
     id: "1_s"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: long_release
-    subtype: button_1
+
+  - platform: state
+    entity_id: !input button_1_entity
+    to: "long_release"
     id: "1_l"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: short_release
-    subtype: button_2
+
+  # BUTTON 2: Brighten
+  - platform: state
+    entity_id: !input button_2_entity
+    to: "short_release"
     id: "2_s"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: initial_press
-    subtype: button_2
+
+  - platform: state
+    entity_id: !input button_2_entity
+    to: "initial_press"
     id: "2_h"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: short_release
-    subtype: button_3
+
+  # BUTTON 3: Dim
+  - platform: state
+    entity_id: !input button_3_entity
+    to: "short_release"
     id: "3_s"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: initial_press
-    subtype: button_3
+
+  - platform: state
+    entity_id: !input button_3_entity
+    to: "initial_press"
     id: "3_h"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: short_release
-    subtype: button_4
+
+  # BUTTON 4: Custom Actions
+  - platform: state
+    entity_id: !input button_4_entity
+    to: "short_release"
     id: "4_s"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: long_release
-    subtype: button_4
+
+  - platform: state
+    entity_id: !input button_4_entity
+    to: "long_release"
     id: "4_l"
 
 action:
   - choose:
-      # BUTTON 1: Power Toggle (Hardcoded)
+      # BUTTON 1: Power Toggle
       - conditions: "{{ trigger.id == '1_s' }}"
         sequence:
           - service: light.toggle
             target: !input target_light
+
       - conditions: "{{ trigger.id == '1_l' }}"
         sequence: !input button_1_long
 
-      # BUTTON 2: Smooth Brighten
+      # BUTTON 2: Brightness Increase
       - conditions: "{{ trigger.id == '2_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
-            data:
-              brightness_step_pct: 10
+            
+              brightness_step_pct: !input brightness_step
+
       - conditions: "{{ trigger.id == '2_h' }}"
         sequence:
           - repeat:
@@ -135,18 +179,20 @@ action:
               sequence:
                 - service: light.turn_on
                   target: !input target_light
-                  data:
-                    brightness_step_pct: 10
-                    transition: 0.5
-                - delay: 0.5
+                  
+                    brightness_step_pct: !input brightness_step
+                    transition: !input dimming_interval
+                - delay:
+                    milliseconds: "{{ (dimming_interval * 1000) | int }}"
 
-      # BUTTON 3: Smooth Dim
+      # BUTTON 3: Brightness Decrease
       - conditions: "{{ trigger.id == '3_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
-            data:
-              brightness_step_pct: -10
+            
+              brightness_step_pct: "{{ -(brightness_step) }}"
+
       - conditions: "{{ trigger.id == '3_h' }}"
         sequence:
           - repeat:
@@ -156,13 +202,15 @@ action:
               sequence:
                 - service: light.turn_on
                   target: !input target_light
-                  data:
-                    brightness_step_pct: -10
-                    transition: 0.5
-                - delay: 0.5
+                  
+                    brightness_step_pct: "{{ -(brightness_step) }}"
+                    transition: !input dimming_interval
+                - delay:
+                    milliseconds: "{{ (dimming_interval * 1000) | int }}"
 
-      # BUTTON 4: Hue Logo (Custom Actions)
+      # BUTTON 4: Custom Actions
       - conditions: "{{ trigger.id == '4_s' }}"
         sequence: !input button_4_short
+
       - conditions: "{{ trigger.id == '4_l' }}"
         sequence: !input button_4_long
