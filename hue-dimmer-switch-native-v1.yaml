@@ -1,70 +1,69 @@
 blueprint:
-  name: "Philips Hue Dimmer V2 (RWL022) - Advanced Smooth Control"
+  name: "Hue Dimmer V2 (RWL022) - Pro Smooth & Safe"
   description: >
-    # 🎮 Advanced Control for Hue Dimmer V2 (RWL022)
+    # 🎮 Ultimate Smooth Control for Hue Dimmer V2 (RWL022)
     
-    This blueprint provides a high-performance, butter-smooth dimming experience while 
-    ensuring maximum system stability. It is specifically designed to avoid 
-    infinite loops and CPU spikes.
+    This professional-grade blueprint offers high-performance dimming while 
+    maintaining strict system safety to prevent CPU spikes and infinite loops.
     
-    ### 🔑 Key Features:
-    * **Smart-Loop Dimming:** Uses an internal Home Assistant loop for Buttons 2 & 3. 
-        This prevents Zigbee network congestion and provides a much smoother 
-        experience than standard "repeat" signals.
-    * **Safety First:** Includes a hard limit (max 20 steps) for every dimming cycle. 
-        Even if a "release" signal is lost in the air, the dimming will stop 
-        automatically after ~6-8 seconds.
-    * **Hardware-Specific:** Tailored for the Hue V2 (RWL022) using Event entities.
+    ### 🔧 Features:
+    * **Advanced Loop Logic:** Uses internal Home Assistant loops for dimming.
+    * **Tuning Parameters:** Adjust step size and transition speed via the UI.
+    * **Safety Guardrails:** Automatic loop termination after 20 steps and `restart` mode protection.
+    * **Custom Actions:** Fully assignable actions for Button 1 (Long) and Button 4 (Short/Long).
     
-    ### ⌨️ Button Mapping:
-    1.  **Button 1 (Top/Power):** * *Short Release:* Toggles the selected light(s).
-        * *Long Press:* Trigger any custom action (e.g., "All Off" script).
-    2.  **Button 2 (Brighten):** * *Hold:* Smoothly increases brightness (10% steps) until released.
-    3.  **Button 3 (Dim):** * *Hold:* Smoothly decreases brightness (10% steps) until released.
-    4.  **Button 4 (Hue Logo):** * *Short Release:* Custom action (e.g., Cycle Scenes).
-        * *Long Press:* Custom action.
-
-    ### ⚠️ Installation Note:
-    Select the four individual **Event entities** for your switch (button_1 through button_4). 
-    Ensure you select the **Light** or **Light Group** you wish to control.
+    ### ⌨️ Button Layout:
+    1. **Button 1 (Top):** Short: Toggle | Long: Custom Action.
+    2. **Button 2 (Sun):** Hold: Smooth Brighten (Customizable Speed).
+    3. **Button 3 (Sun):** Hold: Smooth Dim (Customizable Speed).
+    4. **Button 4 (Hue):** Short: Custom Action | Long: Custom Action.
 
   domain: automation
   input:
     button_1:
-      name: Button 1 (Power - Top)
-      description: The event entity for the first button.
+      name: Button 1 Entity
+      description: Select the event entity for the top button.
       selector: { entity: { filter: { domain: event } } }
     button_2:
-      name: Button 2 (Brighten)
-      description: The event entity for the second button.
+      name: Button 2 Entity
+      description: Select the event entity for the brighten button.
       selector: { entity: { filter: { domain: event } } }
     button_3:
-      name: Button 3 (Dim)
-      description: The event entity for the third button.
+      name: Button 3 Entity
+      description: Select the event entity for the dim button.
       selector: { entity: { filter: { domain: event } } }
     button_4:
-      name: Button 4 (Hue Logo - Bottom)
-      description: The event entity for the fourth button.
+      name: Button 4 Entity
+      description: Select the event entity for the bottom logo button.
       selector: { entity: { filter: { domain: event } } }
     light_target:
       name: Light Target
       description: The lights or groups to control.
       selector: { target: { entity: { domain: light } } }
-    
-    # Custom Actions
+
+    # --- TUNING PARAMETERS ---
+    dim_step:
+      name: Dimming Step Size
+      description: Percentage change per loop iteration (e.g., 10%).
+      default: 10
+      selector: { number: { min: 1, max: 25, unit_of_measurement: "%" } }
+    dim_transition:
+      name: Transition Time (Smoothness)
+      description: "Duration of the fade between steps. Higher = Smoother; Lower = More responsive."
+      default: 0.4
+      selector: { number: { min: 0.1, max: 1, step: 0.1, unit_of_measurement: "s" } }
+
+    # --- CUSTOM ACTIONS ---
     button_1_long:
-      name: Button 1 - Long Press Action
-      description: Action to perform when Button 1 is held.
+      name: Button 1 - Long Press
       default: []
       selector: { action: {} }
     button_4_short:
-      name: Button 4 - Short Release Action
-      description: Action to perform on a quick press of the Hue logo.
+      name: Button 4 - Short Press
       default: []
       selector: { action: {} }
     button_4_long:
-      name: Button 4 - Long Press Action
-      description: Action to perform when the Hue logo is held.
+      name: Button 4 - Long Press
       default: []
       selector: { action: {} }
 
@@ -81,27 +80,28 @@ trigger:
 
 action:
   - variables:
-      # Map inputs to variables to avoid Jinja syntax errors
+      # Loading inputs into local variables
       b1: !input button_1
       b2: !input button_2
       b3: !input button_3
       b4: !input button_4
+      step: !input dim_step
+      trans: !input dim_transition
+      # Event context
       trigger_entity: "{{ trigger.entity_id }}"
       event_type: "{{ trigger.to_state.attributes.event_type }}"
 
   - choose:
-      # --- BUTTON 1 LOGIC ---
+      # BUTTON 1: TOGGLE / CUSTOM LONG
       - conditions: "{{ trigger_entity == b1 }}"
         sequence:
           - choose:
               - conditions: "{{ event_type == 'short_release' }}"
-                sequence:
-                  - service: light.toggle
-                    target: !input light_target
+                sequence: [service: light.toggle, target: !input light_target]
               - conditions: "{{ event_type == 'long_press' }}"
                 sequence: !input button_1_long
 
-      # --- BUTTON 2 LOGIC (BRIGHTEN LOOP) ---
+      # BUTTON 2: SMOOTH BRIGHTEN LOOP
       - conditions:
           - "{{ trigger_entity == b2 }}"
           - "{{ event_type == 'initial_press' }}"
@@ -109,20 +109,21 @@ action:
           - repeat:
               while:
                 - condition: template
-                  # Safety: Stop after 20 iterations or if release is detected
                   value_template: "{{ repeat.index < 20 and wait.trigger == none }}"
               sequence:
                 - service: light.turn_on
                   target: !input light_target
-                  data: { brightness_step_pct: 10, transition: 0.5 }
+                  data:
+                    brightness_step_pct: "{{ step }}"
+                    transition: "{{ trans }}"
                 - wait_for_trigger:
                     - platform: state
                       entity_id: !input button_2
                       attribute: event_type
                       to: ["long_release", "short_release"]
-                  timeout: 0.4
+                  timeout: "{{ trans }}"
 
-      # --- BUTTON 3 LOGIC (DIM LOOP) ---
+      # BUTTON 3: SMOOTH DIM LOOP
       - conditions:
           - "{{ trigger_entity == b3 }}"
           - "{{ event_type == 'initial_press' }}"
@@ -134,15 +135,17 @@ action:
               sequence:
                 - service: light.turn_on
                   target: !input light_target
-                  data: { brightness_step_pct: -10, transition: 0.5 }
+                  data:
+                    brightness_step_pct: "{{ step * -1 }}"
+                    transition: "{{ trans }}"
                 - wait_for_trigger:
                     - platform: state
                       entity_id: !input button_3
                       attribute: event_type
                       to: ["long_release", "short_release"]
-                  timeout: 0.4
+                  timeout: "{{ trans }}"
 
-      # --- BUTTON 4 LOGIC ---
+      # BUTTON 4: CUSTOM ACTIONS
       - conditions: "{{ trigger_entity == b4 }}"
         sequence:
           - choose:
