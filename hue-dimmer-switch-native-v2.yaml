@@ -11,14 +11,6 @@ blueprint:
       name: Philips Hue Dimmer Switch
       selector:
         device:
-          filter:
-            - integration: hue
-              manufacturer: Signify Netherlands B.V.
-              model: RWL022
-            - integration: hue
-              manufacturer: Signify Netherlands B.V.
-              model: "Hue dimmer switch (RWL022)"
-          # Double security: Lamps never have a battery entity
           entity:
             domain: sensor
             device_class: battery
