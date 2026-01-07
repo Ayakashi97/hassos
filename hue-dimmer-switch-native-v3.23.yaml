@@ -1,23 +1,19 @@
 blueprint:
-  name: "Hue Dimmer V2 (RWL022) - Ein-Klick-Steuerung"
+  name: "Hue Dimmer V2 (RWL022)"
   description: >
-    Wähle einmal das Gerät und einmal das Licht. 
-    Button 1: Toggle / Button 2+3: Dimmen (5%) / Button 4 & Button 1 Long: Frei belegbar.
+    Wähle nur die Entität von Button 1 aus. Die restlichen Buttons werden automatisch erkannt.
   domain: automation
   input:
-    remote_device:
-      name: Hue Dimmer Switch
-      description: Wähle den Schalter aus (Das Gerät, nicht die Entität).
+    button_one_entity:
+      name: Button 1 Entität
+      description: Wähle die Entität '...button_1' deines Schalters aus.
       selector:
-        device:
-          integration: hue
-          multiple: false
-          entity:
-            domain: sensor
-            device_class: battery
+        entity:
+          filter:
+            - domain: event
+              device_class: button
     light_target:
       name: Licht / Gruppe
-      description: Die Lichter, die gesteuert werden sollen.
       selector:
         target:
           entity:
@@ -39,91 +35,60 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Button 1: On/Top
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: short_release
-    subtype: button_1
-    id: "b1_short"
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: long_press
-    subtype: button_1
-    id: "b1_long"
-  # Button 2: Dim Up
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: initial_press
-    subtype: button_2
-    id: "b2_dim"
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: repeat
-    subtype: button_2
-    id: "b2_dim"
-  # Button 3: Dim Down
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: initial_press
-    subtype: button_3
-    id: "b3_dim"
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: repeat
-    subtype: button_3
-    id: "b3_dim"
-  # Button 4: Hue Logo
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: short_release
-    subtype: button_4
-    id: "b4_short"
-  - platform: device
-    device_id: !input remote_device
-    domain: hue
-    type: long_press
-    subtype: button_4
-    id: "b4_long"
+  # Wir triggern auf alle 4 Button-Entitäten, indem wir den Namen dynamisch bestimmen
+  - platform: state
+    entity_id: !input button_one_entity
+  - platform: state
+    entity_id: 
+      - "{{ (!input button_one_entity).replace('_button_1', '_button_2') }}"
+      - "{{ (!input button_one_entity).replace('_button_1', '_button_3') }}"
+      - "{{ (!input button_one_entity).replace('_button_1', '_button_4') }}"
 
 action:
-  - choose:
-      # Button 1: Toggle
-      - conditions: "{{ trigger.id == 'b1_short' }}"
-        sequence:
-          - service: light.toggle
-            target: !input light_target
-      
-      # Button 1: Custom Long
-      - conditions: "{{ trigger.id == 'b1_long' }}"
-        sequence: !input button_1_long
+  - variables:
+      # Wir holen uns den Event-Typ (z.B. short_release) aus den Attributen
+      event_type: "{{ trigger.to_state.attributes.event_type }}"
+      # Wir bestimmen, welcher Button gedrückt wurde
+      triggered_entity: "{{ trigger.entity_id }}"
+      base_name: "{{ (!input button_one_entity).replace('_button_1', '') }}"
 
-      # Button 2: Heller (5%)
-      - conditions: "{{ trigger.id == 'b2_dim' }}"
+  - choose:
+      # BUTTON 1
+      - conditions: "{{ triggered_entity == base_name ~ '_button_1' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence:
+                  - service: light.toggle
+                    target: !input light_target
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_1_long
+
+      # BUTTON 2 (Heller)
+      - conditions:
+          - "{{ triggered_entity == base_name ~ '_button_2' }}"
+          - "{{ event_type in ['initial_press', 'repeat'] }}"
         sequence:
           - service: light.turn_on
             target: !input light_target
             data:
               brightness_step_pct: 5
 
-      # Button 3: Dunkler (5%)
-      - conditions: "{{ trigger.id == 'b3_dim' }}"
+      # BUTTON 3 (Dunkler)
+      - conditions:
+          - "{{ triggered_entity == base_name ~ '_button_3' }}"
+          - "{{ event_type in ['initial_press', 'repeat'] }}"
         sequence:
           - service: light.turn_on
             target: !input light_target
             data:
               brightness_step_pct: -5
 
-      # Button 4: Custom Short
-      - conditions: "{{ trigger.id == 'b4_short' }}"
-        sequence: !input button_4_short
-
-      # Button 4: Custom Long
-      - conditions: "{{ trigger.id == 'b4_long' }}"
-        sequence: !input button_4_long
+      # BUTTON 4
+      - conditions: "{{ triggered_entity == base_name ~ '_button_4' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence: !input button_4_short
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_4_long
