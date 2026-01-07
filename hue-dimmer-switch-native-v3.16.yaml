@@ -1,5 +1,5 @@
 blueprint:
-  name: Hue RWL022 Toggle and Smooth Dimmer
+  name: Hue RWL022 Toggle and Smooth Dimmer (Fixed)
   description: Philips Hue Dimmer Switch v2 (RWL022) Controller with Event Entities
   domain: automation
   input:
@@ -51,35 +51,43 @@ max_exceeded: silent
 trigger:
   - platform: state
     entity_id: !input button_1_entity
-    to: short_release
+    to: "short_release"
     id: btn1_short
   - platform: state
     entity_id: !input button_1_entity
-    to: long_release
+    to: "long_release"
     id: btn1_long
   - platform: state
     entity_id: !input button_2_entity
-    to: short_release
+    to: "short_release"
     id: btn2_short
   - platform: state
     entity_id: !input button_2_entity
-    to: initial_press
+    to: "initial_press"
     id: btn2_long
   - platform: state
+    entity_id: !input button_2_entity
+    to: "long_release"
+    id: stop_loop
+  - platform: state
     entity_id: !input button_3_entity
-    to: short_release
+    to: "short_release"
     id: btn3_short
   - platform: state
     entity_id: !input button_3_entity
-    to: initial_press
+    to: "initial_press"
     id: btn3_long
   - platform: state
+    entity_id: !input button_3_entity
+    to: "long_release"
+    id: stop_loop
+  - platform: state
     entity_id: !input button_4_entity
-    to: short_release
+    to: "short_release"
     id: btn4_short
   - platform: state
     entity_id: !input button_4_entity
-    to: long_release
+    to: "long_release"
     id: btn4_long
 
 action:
@@ -88,7 +96,7 @@ action:
           - condition: template
             value_template: "{{ trigger.id == 'btn1_short' }}"
         sequence:
-          - service: light.toggle
+          - action: light.toggle
             target: !input target_light
       - conditions:
           - condition: template
@@ -98,9 +106,10 @@ action:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_short' }}"
         sequence:
-          - service: light.turn_on
+          - action: light.turn_on
             target: !input target_light
-              brightness_step_pct: 5
+            data:
+              brightness_step_pct: 10
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_long' }}"
@@ -110,9 +119,10 @@ action:
                 - condition: template
                   value_template: "{{ true }}"
               sequence:
-                - service: light.turn_on
+                - action: light.turn_on
                   target: !input target_light
-                    brightness_step_pct: 5
+                  data:
+                    brightness_step_pct: 10
                     transition: 0.5
                 - delay:
                     milliseconds: 500
@@ -120,9 +130,10 @@ action:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_short' }}"
         sequence:
-          - service: light.turn_on
+          - action: light.turn_on
             target: !input target_light
-              brightness_step_pct: -5
+            data:
+              brightness_step_pct: -10
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_long' }}"
@@ -132,9 +143,10 @@ action:
                 - condition: template
                   value_template: "{{ true }}"
               sequence:
-                - service: light.turn_on
+                - action: light.turn_on
                   target: !input target_light
-                    brightness_step_pct: -5
+                  data:
+                    brightness_step_pct: -10
                     transition: 0.5
                 - delay:
                     milliseconds: 500
@@ -146,3 +158,7 @@ action:
           - condition: template
             value_template: "{{ trigger.id == 'btn4_long' }}"
         sequence: !input button_4_long
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'stop_loop' }}"
+        sequence: [] # Tut nichts, bricht aber durch 'mode: restart' die Schleife ab.
