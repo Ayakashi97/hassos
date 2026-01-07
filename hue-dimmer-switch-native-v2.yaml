@@ -5,7 +5,7 @@ blueprint:
     This uses a foolproof filter to show only switches and hide all lamps.
   domain: automation
   input:
-    device:
+    remote:
       name: Philips Hue Dimmer Switch
       selector:
         device:
