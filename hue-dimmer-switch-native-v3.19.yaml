@@ -1,19 +1,17 @@
 blueprint:
-  name: Hue RWL022 (V2) Single Device Selector
-  description: Wähle nur den Schalter aus. Erwartet die offizielle Philips Hue Integration.
+  name: Hue RWL022 (V2) - Filtered Device Selection
+  description: Wähle den Schalter über die Geräte-Liste (gefiltert nach Batterie-Sensor).
   domain: automation
   input:
-    device:
-      name: Philips Hue Dimmer Switch
+    hue_device:
+      name: Hue Dimmer Schalter
+      description: Wähle den Philips Hue Dimmer Schalter (v2) aus.
       selector:
         device:
           filter:
-            - integration: hue
-          # This entity check removes all lamps (Bedroom 1-5) from the list
-          entity:
-            domain: sensor
-            device_class: battery
-
+            - entity:
+                - domain: sensor
+                  device_class: battery
     target_light:
       name: Ziel-Lampen
       selector:
@@ -40,7 +38,7 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Button 1 (An/Aus)
+  # Button 1 (Ein/Aus)
   - platform: device
     domain: hue
     device_id: !input hue_device
@@ -96,7 +94,7 @@ trigger:
     subtype: button_4
     id: btn4_long
 
-  # Stop-Trigger für das Dimmen (beim Loslassen von Button 2 oder 3)
+  # Stop-Trigger für das Loslassen (beendet die Dimm-Schleife)
   - platform: device
     domain: hue
     device_id: !input hue_device
@@ -112,7 +110,6 @@ trigger:
 
 action:
   - choose:
-      # Taste 1 Toggle
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn1_short' }}"
@@ -120,13 +117,11 @@ action:
           - action: light.toggle
             target: !input target_light
 
-      # Taste 1 Long Press (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn1_long' }}"
         sequence: !input button_1_long
 
-      # Taste 2 (Heller) - Kurz
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_short' }}"
@@ -136,7 +131,6 @@ action:
             data:
               brightness_step_pct: 10
 
-      # Taste 2 (Heller) - Lang (Dimmen-Schleife)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn2_long' }}"
@@ -154,7 +148,6 @@ action:
                 - delay:
                     milliseconds: 500
 
-      # Taste 3 (Dunkler) - Kurz
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_short' }}"
@@ -164,7 +157,6 @@ action:
             data:
               brightness_step_pct: -10
 
-      # Taste 3 (Dunkler) - Lang (Dimmen-Schleife)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn3_long' }}"
@@ -182,19 +174,16 @@ action:
                 - delay:
                     milliseconds: 500
 
-      # Taste 4 Kurz (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn4_short' }}"
         sequence: !input button_4_short
 
-      # Taste 4 Lang (Benutzerdefiniert)
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'btn4_long' }}"
         sequence: !input button_4_long
 
-      # Stoppt die Schleife durch mode: restart
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'stop_loop' }}"
