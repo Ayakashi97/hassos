@@ -1,0 +1,152 @@
+blueprint:
+  name: "Philips Hue Dimmer V2 (RWL022) - Advanced Smooth Control"
+  description: >
+    # 🎮 Advanced Control for Hue Dimmer V2 (RWL022)
+    
+    This blueprint provides a high-performance, butter-smooth dimming experience while 
+    ensuring maximum system stability. It is specifically designed to avoid 
+    infinite loops and CPU spikes.
+    
+    ### 🔑 Key Features:
+    * **Smart-Loop Dimming:** Uses an internal Home Assistant loop for Buttons 2 & 3. 
+        This prevents Zigbee network congestion and provides a much smoother 
+        experience than standard "repeat" signals.
+    * **Safety First:** Includes a hard limit (max 20 steps) for every dimming cycle. 
+        Even if a "release" signal is lost in the air, the dimming will stop 
+        automatically after ~6-8 seconds.
+    * **Hardware-Specific:** Tailored for the Hue V2 (RWL022) using Event entities.
+    
+    ### ⌨️ Button Mapping:
+    1.  **Button 1 (Top/Power):** * *Short Release:* Toggles the selected light(s).
+        * *Long Press:* Trigger any custom action (e.g., "All Off" script).
+    2.  **Button 2 (Brighten):** * *Hold:* Smoothly increases brightness (10% steps) until released.
+    3.  **Button 3 (Dim):** * *Hold:* Smoothly decreases brightness (10% steps) until released.
+    4.  **Button 4 (Hue Logo):** * *Short Release:* Custom action (e.g., Cycle Scenes).
+        * *Long Press:* Custom action.
+
+    ### ⚠️ Installation Note:
+    Select the four individual **Event entities** for your switch (button_1 through button_4). 
+    Ensure you select the **Light** or **Light Group** you wish to control.
+
+  domain: automation
+  input:
+    button_1:
+      name: Button 1 (Power - Top)
+      description: The event entity for the first button.
+      selector: { entity: { filter: { domain: event } } }
+    button_2:
+      name: Button 2 (Brighten)
+      description: The event entity for the second button.
+      selector: { entity: { filter: { domain: event } } }
+    button_3:
+      name: Button 3 (Dim)
+      description: The event entity for the third button.
+      selector: { entity: { filter: { domain: event } } }
+    button_4:
+      name: Button 4 (Hue Logo - Bottom)
+      description: The event entity for the fourth button.
+      selector: { entity: { filter: { domain: event } } }
+    light_target:
+      name: Light Target
+      description: The lights or groups to control.
+      selector: { target: { entity: { domain: light } } }
+    
+    # Custom Actions
+    button_1_long:
+      name: Button 1 - Long Press Action
+      description: Action to perform when Button 1 is held.
+      default: []
+      selector: { action: {} }
+    button_4_short:
+      name: Button 4 - Short Release Action
+      description: Action to perform on a quick press of the Hue logo.
+      default: []
+      selector: { action: {} }
+    button_4_long:
+      name: Button 4 - Long Press Action
+      description: Action to perform when the Hue logo is held.
+      default: []
+      selector: { action: {} }
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: 
+      - !input button_1
+      - !input button_2
+      - !input button_3
+      - !input button_4
+
+action:
+  - variables:
+      # Map inputs to variables to avoid Jinja syntax errors
+      b1: !input button_1
+      b2: !input button_2
+      b3: !input button_3
+      b4: !input button_4
+      trigger_entity: "{{ trigger.entity_id }}"
+      event_type: "{{ trigger.to_state.attributes.event_type }}"
+
+  - choose:
+      # --- BUTTON 1 LOGIC ---
+      - conditions: "{{ trigger_entity == b1 }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence:
+                  - service: light.toggle
+                    target: !input light_target
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_1_long
+
+      # --- BUTTON 2 LOGIC (BRIGHTEN LOOP) ---
+      - conditions:
+          - "{{ trigger_entity == b2 }}"
+          - "{{ event_type == 'initial_press' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  # Safety: Stop after 20 iterations or if release is detected
+                  value_template: "{{ repeat.index < 20 and wait.trigger == none }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data: { brightness_step_pct: 10, transition: 0.5 }
+                - wait_for_trigger:
+                    - platform: state
+                      entity_id: !input button_2
+                      attribute: event_type
+                      to: ["long_release", "short_release"]
+                  timeout: 0.4
+
+      # --- BUTTON 3 LOGIC (DIM LOOP) ---
+      - conditions:
+          - "{{ trigger_entity == b3 }}"
+          - "{{ event_type == 'initial_press' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 20 and wait.trigger == none }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data: { brightness_step_pct: -10, transition: 0.5 }
+                - wait_for_trigger:
+                    - platform: state
+                      entity_id: !input button_3
+                      attribute: event_type
+                      to: ["long_release", "short_release"]
+                  timeout: 0.4
+
+      # --- BUTTON 4 LOGIC ---
+      - conditions: "{{ trigger_entity == b4 }}"
+        sequence:
+          - choose:
+              - conditions: "{{ event_type == 'short_release' }}"
+                sequence: !input button_4_short
+              - conditions: "{{ event_type == 'long_press' }}"
+                sequence: !input button_4_long
