@@ -91,7 +91,7 @@ action:
           - service: light.turn_on
             target: !input light_target
             data:
-              brightness_step_pct: 10
+              brightness_step_pct: 2.5
               transition: 0.1
 
       # BUTTON 3 (Dunkler)
@@ -102,7 +102,7 @@ action:
           - service: light.turn_on
             target: !input light_target
             data:
-              brightness_step_pct: -10
+              brightness_step_pct: -2.5
               transition: 0.1
 
       # BUTTON 4
