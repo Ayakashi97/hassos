@@ -1,9 +1,9 @@
 blueprint:
-  name: Native Hue - RWL022 Smooth Dimmer (Final Fix)
+  name: Native Hue - RWL022 Complete (Short, Long & Smooth)
   description: |
-    Smooth dimming for Philips Hue Dimmer RWL022 (v2) via Native Hue.
-    Button 2/3: Hold to dim smoothly, Tap to step.
-    Button 1/4: Custom actions.
+    Control anything with your Hue Dimmer (RWL022) via Native Hue.
+    - Buttons 1-4: Configure Short and Long press.
+    - Buttons 2-3: Hold to dim smoothly (this is the Long Press action).
   domain: automation
   input:
     device:
@@ -16,36 +16,62 @@ blueprint:
             domain: sensor
             device_class: battery
     target_light:
-      name: Light(s) to control
+      name: Light(s) for smooth dimming (Buttons 2 & 3)
       selector:
         target:
           entity:
             domain: light
 
+    # BUTTON 1
     button_1_short:
-      name: "Button 1 (Top) - Short"
+      name: "Button 1 (Power) - Short Press"
       default: []
       selector:
         action:
-    button_4_short:
-      name: "Button 4 (Bottom) - Short"
+    button_1_long:
+      name: "Button 1 (Power) - Long Press"
       default: []
       selector:
         action:
 
-mode: restart # Stoppt das Dimmen sofort beim Loslassen
+    # BUTTON 2 (Brighten)
+    button_2_short:
+      name: "Button 2 (Brighten) - Short Press"
+      default: []
+      selector:
+        action:
+    # No Long Press selector for 2 & 3 because "Hold" is used for smooth dimming logic
+
+    # BUTTON 3 (Dim)
+    button_3_short:
+      name: "Button 3 (Dim) - Short Press"
+      default: []
+      selector:
+        action:
+
+    # BUTTON 4 (Hue Logo)
+    button_4_short:
+      name: "Button 4 (Hue Logo) - Short Press"
+      default: []
+      selector:
+        action:
+    button_4_long:
+      name: "Button 4 (Hue Logo) - Long Press"
+      default: []
+      selector:
+        action:
+
+mode: restart # Essential for stopping dimming loops
 max_exceeded: silent
 
 trigger:
-  # Button 1: Power
+  # All Short Releases
   - platform: device
     domain: hue
     device_id: !input device
     type: remote_button_short_release
     subtype: 1
     id: "1_short"
-  
-  # Button 2: Brighten
   - platform: device
     domain: hue
     device_id: !input device
@@ -55,25 +81,9 @@ trigger:
   - platform: device
     domain: hue
     device_id: !input device
-    type: remote_button_initial_press
-    subtype: 2
-    id: "2_hold"
-
-  # Button 3: Dim
-  - platform: device
-    domain: hue
-    device_id: !input device
     type: remote_button_short_release
     subtype: 3
     id: "3_short"
-  - platform: device
-    domain: hue
-    device_id: !input device
-    type: remote_button_initial_press
-    subtype: 3
-    id: "3_hold"
-
-  # Button 4: Hue
   - platform: device
     domain: hue
     device_id: !input device
@@ -81,19 +91,45 @@ trigger:
     subtype: 4
     id: "4_short"
 
+  # All Long Releases
+  - platform: device
+    domain: hue
+    device_id: !input device
+    type: remote_button_long_release
+    subtype: 1
+    id: "1_long"
+  - platform: device
+    domain: hue
+    device_id: !input device
+    type: remote_button_long_release
+    subtype: 4
+    id: "4_long"
+
+  # Initial Presses for Dimming Loops
+  - platform: device
+    domain: hue
+    device_id: !input device
+    type: remote_button_initial_press
+    subtype: 2
+    id: "2_hold"
+  - platform: device
+    domain: hue
+    device_id: !input device
+    type: remote_button_initial_press
+    subtype: 3
+    id: "3_hold"
+
 action:
   - choose:
-      # Button 1 Action
+      # BUTTON 1
       - conditions: "{{ trigger.id == '1_short' }}"
         sequence: !input button_1_short
+      - conditions: "{{ trigger.id == '1_long' }}"
+        sequence: !input button_1_long
 
-      # Button 2: Brighten (Tap = 10%, Hold = Smooth Loop)
+      # BUTTON 2 (Brighten)
       - conditions: "{{ trigger.id == '2_short' }}"
-        sequence:
-          - service: light.turn_on
-            target: !input target_light
-            data:
-              brightness_step_pct: 10
+        sequence: !input button_2_short
       - conditions: "{{ trigger.id == '2_hold' }}"
         sequence:
           - repeat:
@@ -108,13 +144,9 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # Button 3: Dim (Tap = -10%, Hold = Smooth Loop)
+      # BUTTON 3 (Dim)
       - conditions: "{{ trigger.id == '3_short' }}"
-        sequence:
-          - service: light.turn_on
-            target: !input target_light
-            data:
-              brightness_step_pct: -10
+        sequence: !input button_3_short
       - conditions: "{{ trigger.id == '3_hold' }}"
         sequence:
           - repeat:
@@ -129,6 +161,8 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # Button 4 Action
+      # BUTTON 4
       - conditions: "{{ trigger.id == '4_short' }}"
         sequence: !input button_4_short
+      - conditions: "{{ trigger.id == '4_long' }}"
+        sequence: !input button_4_long
