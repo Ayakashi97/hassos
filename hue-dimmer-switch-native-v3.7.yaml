@@ -1,16 +1,23 @@
 blueprint:
   name: Hue RWL022 Toggle and Smooth Dimmer
   description: |
-    A comprehensive controller for the Philips Hue Dimmer Switch (v2 / RWL022) 
-    using the native Philips Hue integration.
+    ### Philips Hue Dimmer Switch (RWL022) Controller
+    This blueprint provides full control over the Hue Dimmer Switch v2 using the official Philips Hue integration. 
+    It is specifically designed for the RWL022 model (with the 'hue' logo on the bottom button).
 
-    Features:
-    - Button 1 (Top): Hardcoded to toggle 'Target Light(s)' on short press. Customizable long press.
-    - Button 2 & 3 (Center): Tap to step brightness or hold for smooth continuous dimming.
-    - Button 4 (Bottom): Fully customizable short and long press actions.
-    - Optimized Selector: Only shows RWL022 devices and automatically hides lamps.
+    **Functionality:**
+    * **Button 1 (Top):** * *Short Press:* Hardcoded to Toggle the selected 'Target Light(s)'.
+        * *Long Press:* Customizable action.
+    * **Button 2 (Brighten):** * *Short Press:* Increases brightness by 10%.
+        * *Long Press (Hold):* Continuously increases brightness smoothly until released.
+    * **Button 3 (Dim):** * *Short Press:* Decreases brightness by 10%.
+        * *Long Press (Hold):* Continuously decreases brightness smoothly until released.
+    * **Button 4 (Bottom):** * *Short & Long Press:* Fully customizable actions (e.g., Scenes, Scripts).
 
-    Required Hardware: Philips Hue Dimmer Switch model RWL022 connected via the Hue Bridge.
+    **Technical Implementation:**
+    * Uses the 'Battery-Filter' to ensure only remotes are selectable and all Hue lamps are hidden.
+    * Uses `mode: restart` to instantly kill the dimming loop as soon as you release the button.
+    * Uses native event-matching for the 'button_1' to 'button_4' subtypes.
   domain: automation
   input:
     device:
@@ -19,19 +26,19 @@ blueprint:
         device:
           filter:
             - integration: hue
-              model: "Hue dimmer switch (RWL022)"
+          # This entity check removes all lamps (Bedroom 1-5) from the list
           entity:
             domain: sensor
             device_class: battery
     target_light:
       name: Target Light(s)
-      description: The lights controlled by the Power Toggle (Button 1) and Dimming (Buttons 2 & 3).
+      description: These lights are controlled by the Power Toggle (Button 1) and Dimming (Buttons 2 & 3).
       selector:
         target:
           entity:
             domain: light
 
-    # Custom Action Slots
+    # Customizable Action Slots
     button_1_long:
       name: Button 1 (Power) - Long Press Action
       default: []
@@ -52,7 +59,7 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # Button 1
+  # Trigger mapping based on native hue event types
   - platform: device
     domain: hue
     device_id: !input device
@@ -65,8 +72,6 @@ trigger:
     type: long_release
     subtype: button_1
     id: "1_l"
-
-  # Button 2
   - platform: device
     domain: hue
     device_id: !input device
@@ -79,8 +84,6 @@ trigger:
     type: initial_press
     subtype: button_2
     id: "2_h"
-
-  # Button 3
   - platform: device
     domain: hue
     device_id: !input device
@@ -93,8 +96,6 @@ trigger:
     type: initial_press
     subtype: button_3
     id: "3_h"
-
-  # Button 4
   - platform: device
     domain: hue
     device_id: !input device
@@ -110,7 +111,7 @@ trigger:
 
 action:
   - choose:
-      # BUTTON 1: Power Toggle
+      # BUTTON 1: Power Toggle (Hardcoded)
       - conditions: "{{ trigger.id == '1_s' }}"
         sequence:
           - service: light.toggle
@@ -160,7 +161,7 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # BUTTON 4: Hue Logo
+      # BUTTON 4: Hue Logo (Custom Actions)
       - conditions: "{{ trigger.id == '4_s' }}"
         sequence: !input button_4_short
       - conditions: "{{ trigger.id == '4_l' }}"
