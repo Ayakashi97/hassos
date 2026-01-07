@@ -11,8 +11,10 @@ blueprint:
       selector:
         device:
           integration: hue
-          model: RWL022
           multiple: false
+          entity:
+            domain: sensor
+            device_class: battery
     light_target:
       name: Licht / Gruppe
       description: Die Lichter, die gesteuert werden sollen.
