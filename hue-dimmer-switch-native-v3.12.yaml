@@ -1,18 +1,6 @@
 blueprint:
-  name: Hue RWL022 Toggle and Smooth Dimmer (Event-Based)
-  description: |
-    ### Philips Hue Dimmer Switch (RWL022) Controller
-    This blueprint provides full control over the Hue Dimmer Switch v2 using the official Philips Hue integration. 
-    It is specifically designed for the RWL022 model (with the 'hue' logo on the bottom button).
-
-    **Compatibility:** Works with the newest Hue Integration (2024+) that uses Event Entities.
-
-    **Functionality:**
-    * **Button 1 (Top):** Short Press = Toggle | Long Press = Custom Action
-    * **Button 2 (Brighten):** Short Press = +10% | Long Hold = Smooth Increase
-    * **Button 3 (Dim):** Short Press = -10% | Long Hold = Smooth Decrease
-    * **Button 4 (Bottom):** Short & Long Press = Custom Actions
-
+  name: Hue RWL022 Toggle and Smooth Dimmer
+  description: Philips Hue Dimmer Switch v2 (RWL022) Controller with Event Entities
   domain: automation
   input:
     button_1_entity:
@@ -20,46 +8,39 @@ blueprint:
       selector:
         entity:
           domain: event
-    
     button_2_entity:
       name: Button 2 Event Entity
       selector:
         entity:
           domain: event
-    
     button_3_entity:
       name: Button 3 Event Entity
       selector:
         entity:
           domain: event
-    
     button_4_entity:
       name: Button 4 Event Entity
       selector:
         entity:
           domain: event
-
     target_light:
       name: Target Light(s)
       selector:
         target:
           entity:
             domain: light
-
     button_1_long:
-      name: Button 1 (Power) - Long Press Action
+      name: Button 1 Long Press Action
       default: []
       selector:
         action:
-
     button_4_short:
-      name: Button 4 (Hue Logo) - Short Press Action
+      name: Button 4 Short Press Action
       default: []
       selector:
         action:
-
     button_4_long:
-      name: Button 4 (Hue Logo) - Long Press Action
+      name: Button 4 Long Press Action
       default: []
       selector:
         action:
@@ -70,124 +51,102 @@ max_exceeded: silent
 trigger:
   - platform: state
     entity_id: !input button_1_entity
-    to: "short_release"
-    id: "1_s"
-
+    to: short_release
+    id: btn1_short
   - platform: state
     entity_id: !input button_1_entity
-    to: "long_release"
-    id: "1_l"
-
+    to: long_release
+    id: btn1_long
   - platform: state
     entity_id: !input button_2_entity
-    to: "short_release"
-    id: "2_s"
-
+    to: short_release
+    id: btn2_short
   - platform: state
     entity_id: !input button_2_entity
-    to: "initial_press"
-    id: "2_h"
-
+    to: initial_press
+    id: btn2_long
   - platform: state
     entity_id: !input button_3_entity
-    to: "short_release"
-    id: "3_s"
-
+    to: short_release
+    id: btn3_short
   - platform: state
     entity_id: !input button_3_entity
-    to: "initial_press"
-    id: "3_h"
-
+    to: initial_press
+    id: btn3_long
   - platform: state
     entity_id: !input button_4_entity
-    to: "short_release"
-    id: "4_s"
-
+    to: short_release
+    id: btn4_short
   - platform: state
     entity_id: !input button_4_entity
-    to: "long_release"
-    id: "4_l"
+    to: long_release
+    id: btn4_long
 
 action:
   - choose:
-      # BUTTON 1: Power Toggle - Short Press
-      - conditions:
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn1_short' }}"
+      sequence:
+      - service: light.toggle
+        target: !input target_light
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn1_long' }}"
+      sequence: !input button_1_long
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn2_short' }}"
+      sequence:
+      - service: light.turn_on
+        target: !input target_light
+        
+          brightness_step_pct: 10
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn2_long' }}"
+      sequence:
+      - repeat:
+          while:
           - condition: template
-            value_template: "{{ trigger.id == '1_s' }}"
-        sequence:
-          - service: light.toggle
-            target: !input target_light
-
-      # BUTTON 1: Power - Long Press
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '1_l' }}"
-        sequence: !input button_1_long
-
-      # BUTTON 2: Brighten - Short Press
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '2_s' }}"
-        sequence:
+            value_template: "{{ true }}"
+          sequence:
           - service: light.turn_on
             target: !input target_light
             
               brightness_step_pct: 10
-
-      # BUTTON 2: Brighten - Long Hold
-      - conditions:
+              transition: 0.5
+          - delay:
+              milliseconds: 500
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn3_short' }}"
+      sequence:
+      - service: light.turn_on
+        target: !input target_light
+        
+          brightness_step_pct: -10
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn3_long' }}"
+      sequence:
+      - repeat:
+          while:
           - condition: template
-            value_template: "{{ trigger.id == '2_h' }}"
-        sequence:
-          - repeat:
-              while:
-                - condition: template
-                  value_template: "{{ true }}"
-              sequence:
-                - service: light.turn_on
-                  target: !input target_light
-                  
-                    brightness_step_pct: 10
-                    transition: 0.5
-                - delay:
-                    milliseconds: 500
-
-      # BUTTON 3: Dim - Short Press
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '3_s' }}"
-        sequence:
+            value_template: "{{ true }}"
+          sequence:
           - service: light.turn_on
             target: !input target_light
             
               brightness_step_pct: -10
-
-      # BUTTON 3: Dim - Long Hold
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '3_h' }}"
-        sequence:
-          - repeat:
-              while:
-                - condition: template
-                  value_template: "{{ true }}"
-              sequence:
-                - service: light.turn_on
-                  target: !input target_light
-                  
-                    brightness_step_pct: -10
-                    transition: 0.5
-                - delay:
-                    milliseconds: 500
-
-      # BUTTON 4: Custom - Short Press
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '4_s' }}"
-        sequence: !input button_4_short
-
-      # BUTTON 4: Custom - Long Press
-      - conditions:
-          - condition: template
-            value_template: "{{ trigger.id == '4_l' }}"
-        sequence: !input button_4_long
+              transition: 0.5
+          - delay:
+              milliseconds: 500
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn4_short' }}"
+      sequence: !input button_4_short
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'btn4_long' }}"
+      sequence: !input button_4_long
