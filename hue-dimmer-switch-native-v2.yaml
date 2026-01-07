@@ -1,9 +1,9 @@
 blueprint:
-  name: Native Hue - Philips Hue Dimmer Switch RWL022 Only
+  name: Native Hue - Philips Hue Dimmer Switch RWL022
   description: |
     Control your home using the Philips Hue Dimmer Switch (v2 / RWL022) via the NATIVE Hue integration.
     
-    This version uses strict filtering to only show the RWL022 and exclude all lamps or other devices.
+    This blueprint uses a strict filter to ensure only the RWL022 appears and lamps are excluded.
     Supported actions: Short Press and Long Press (on release) for all 4 buttons.
   domain: automation
   input:
@@ -12,11 +12,9 @@ blueprint:
       description: Select your RWL022 Dimmer Switch.
       selector:
         device:
-          integration: hue
-          model: RWL022
-          entity:
-            domain: sensor
-            device_class: battery
+          filter:
+            - integration: hue
+              model: Hue dimmer switch (RWL022)
 
     # Button 1: Power (Top)
     button_1_short:
