@@ -1,63 +1,64 @@
 blueprint:
-  name: Hue - Philips Hue Dimmer Switch Config (Official Integration)
+  name: Native Hue - Multi-Model Dimmer Switch (RWL020/021/022)
   description: |
-    Steuerung für den Philips Hue Dimmer Switch über die offizielle Hue Integration.
-    Unterstützt Kurzes Drücken und langes Halten (Release).
+    Steuerung für ALLE Philips Hue Dimmer Schalter über die NATIVE Hue Integration.
+    Unterstützt RWL020 (US v1), RWL021 (EU v1) und RWL022 (v2 mit Hue-Button).
     
-    Hinweis: Die Hue Integration unterstützt nativ keine 'Double Press' Events. 
-    Diese Slots bleiben in der Konfiguration vorhanden, werden aber ohne zusätzliche Logik nicht ausgelöst.
+    Aktionen: Kurzer Druck und langes Halten (Release) für alle 4 Tasten.
   domain: automation
   input:
     remote:
-      name: Philips Hue Dimmer Switch
-      description: Wähle den Dimmer Switch aus (Hue Integration)
+      name: Philips Hue Dimmer Schalter
+      description: Wähle den Schalter aus (Egal ob v1 oder v2).
       selector:
         device:
           integration: hue
-          manufacturer: Signify Netherlands B.V.
-          model: RWL021 # Gilt auch für RWL020
+          # Wir lassen das Model weg, damit alle 3 Typen wählbar sind
           
-# inputs für custom actions
-    button_on_short_press:
-      name: An (Button 1) - Kurz drücken
+    # TASTE 1 (Ganz oben: On / Power)
+    btn_1_short:
+      name: "Taste 1 - Kurz"
       default: []
       selector:
         action:
-    button_on_long_press:
-      name: An (Button 1) - Lange halten (Release)
-      default: []
-      selector:
-        action:
-
-    button_up_short_press:
-      name: Heller (Button 2) - Kurz drücken
-      default: []
-      selector:
-        action:
-    button_up_long_press:
-      name: Heller (Button 2) - Lange halten (Release)
+    btn_1_long:
+      name: "Taste 1 - Lang (Halten)"
       default: []
       selector:
         action:
 
-    button_down_short_press:
-      name: Dunkler (Button 3) - Kurz drücken
+    # TASTE 2 (Oben Mitte: Heller)
+    btn_2_short:
+      name: "Taste 2 - Kurz"
       default: []
       selector:
         action:
-    button_down_long_press:
-      name: Dunkler (Button 3) - Lange halten (Release)
+    btn_2_long:
+      name: "Taste 2 - Lang (Halten)"
       default: []
       selector:
         action:
 
-    button_off_short_press:
-      name: Aus (Button 4) - Kurz drücken
+    # TASTE 3 (Unten Mitte: Dunkler)
+    btn_3_short:
+      name: "Taste 3 - Kurz"
       default: []
       selector:
         action:
-    button_off_long_press:
-      name: Aus (Button 4) - Lange halten (Release)
+    btn_3_long:
+      name: "Taste 3 - Lang (Halten)"
+      default: []
+      selector:
+        action:
+
+    # TASTE 4 (Ganz unten: Off / Hue Logo)
+    btn_4_short:
+      name: "Taste 4 - Kurz"
+      default: []
+      selector:
+        action:
+    btn_4_long:
+      name: "Taste 4 - Lang (Halten)"
       default: []
       selector:
         action:
@@ -79,31 +80,31 @@ trigger:
 
 action:
   - variables:
-      # Die Hue Integration liefert bei Device-Triggern den Subtype (Button-Nummer)
-      button_id: "{{ trigger.event.data.subtype if trigger.platform == 'event' else trigger.subtype }}"
+      # Die Button-ID (subtype) wird vom Trigger geliefert (1, 2, 3 oder 4)
+      button_id: "{{ trigger.subtype }}"
       press_type: "{{ trigger.id }}"
 
   - choose:
-      # Button 1: ON
+      # Taste 1
       - conditions: "{{ button_id == 1 and press_type == 'short' }}"
-        sequence: !input button_on_short_press
+        sequence: !input btn_1_short
       - conditions: "{{ button_id == 1 and press_type == 'long' }}"
-        sequence: !input button_on_long_press
+        sequence: !input btn_1_long
 
-      # Button 2: UP
+      # Taste 2
       - conditions: "{{ button_id == 2 and press_type == 'short' }}"
-        sequence: !input button_up_short_press
+        sequence: !input btn_2_short
       - conditions: "{{ button_id == 2 and press_type == 'long' }}"
-        sequence: !input button_up_long_press
+        sequence: !input btn_2_long
 
-      # Button 3: DOWN
+      # Taste 3
       - conditions: "{{ button_id == 3 and press_type == 'short' }}"
-        sequence: !input button_down_short_press
+        sequence: !input btn_3_short
       - conditions: "{{ button_id == 3 and press_type == 'long' }}"
-        sequence: !input button_down_long_press
+        sequence: !input btn_3_long
 
-      # Button 4: OFF
+      # Taste 4
       - conditions: "{{ button_id == 4 and press_type == 'short' }}"
-        sequence: !input button_off_short_press
+        sequence: !input btn_4_short
       - conditions: "{{ button_id == 4 and press_type == 'long' }}"
-        sequence: !input button_off_long_press
+        sequence: !input btn_4_long
