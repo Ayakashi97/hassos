@@ -31,64 +31,46 @@ blueprint:
 
     ### ⚙️ Tuning Parameters:
     * **Dimming Step Size:** Percentage change per loop iteration (e.g., 10%). 
-      How much the brightness changes with every "step" of the loop.
     * **Transition Time (Smoothness):** Duration of the fade between steps. 
-      Higher values = smoother, but "rubbery" feeling. 
-      Lower values = more direct and responsive, but potentially "choppy" on some bulbs.
 
     ### ⚠️ Installation Note:
     Select the four individual **Event entities** for your switch (button_1 through button_4). 
-    Ensure you select the **Light** or **Light Group** you wish to control.
 
   domain: automation
   input:
     button_1:
       name: Button 1 Entity (Top)
-      description: The event entity for the first button (e.g., event.xxx_button_1).
       selector: { entity: { filter: { domain: event } } }
     button_2:
       name: Button 2 Entity (Brighten)
-      description: The event entity for the second button.
       selector: { entity: { filter: { domain: event } } }
     button_3:
       name: Button 3 Entity (Dim)
-      description: The event entity for the third button.
       selector: { entity: { filter: { domain: event } } }
     button_4:
       name: Button 4 Entity (Hue Logo)
-      description: The event entity for the fourth button.
       selector: { entity: { filter: { domain: event } } }
     light_target:
       name: Light Target
-      description: The lights or groups to control.
       selector: { target: { entity: { domain: light } } }
-
-    # --- TUNING PARAMETERS ---
     dim_step:
       name: Dimming Step Size
-      description: Percentage change per loop iteration (e.g., 10%).
       default: 10
       selector: { number: { min: 1, max: 25, unit_of_measurement: "%" } }
     dim_transition:
       name: Transition Time (Smoothness)
-      description: "Time for the transition. Higher values = smoother; lower values = more direct/snappy."
       default: 0.4
       selector: { number: { min: 0.1, max: 1, step: 0.1, unit_of_measurement: "s" } }
-
-    # --- CUSTOM ACTIONS ---
     button_1_long:
       name: Button 1 - Long Press
-      description: Action to perform when Button 1 is held.
       default: []
       selector: { action: {} }
     button_4_short:
       name: Button 4 - Short Press
-      description: Action to perform on a quick press of the Hue logo.
       default: []
       selector: { action: {} }
     button_4_long:
       name: Button 4 - Long Press
-      description: Action to perform when the Hue logo is held.
       default: []
       selector: { action: {} }
 
@@ -103,6 +85,10 @@ trigger:
       - !input button_3
       - !input button_4
 
+# WICHTIG: Ignoriere 'repeat' Signale, damit die interne Schleife nicht unterbrochen wird!
+condition:
+  - "{{ trigger.to_state.attributes.event_type != 'repeat' }}"
+
 action:
   - variables:
       b1: !input button_1
@@ -115,7 +101,7 @@ action:
       event_type: "{{ trigger.to_state.attributes.event_type }}"
 
   - choose:
-      # --- BUTTON 1: TOGGLE / CUSTOM LONG ---
+      # BUTTON 1
       - conditions: "{{ trigger_entity == b1 }}"
         sequence:
           - choose:
@@ -126,29 +112,37 @@ action:
               - conditions: "{{ event_type == 'long_press' }}"
                 sequence: !input button_1_long
 
-      # --- BUTTON 2: BRIGHTEN (INITIAL & REPEAT) ---
+      # BUTTON 2 (HELLER - LOOP STARTET BEI INITIAL_PRESS)
       - conditions:
           - "{{ trigger_entity == b2 }}"
-          - "{{ event_type in ['initial_press', 'repeat'] }}"
+          - "{{ event_type == 'initial_press' }}"
         sequence:
-          - service: light.turn_on
-            target: !input light_target
-            data:
-              brightness_step_pct: "{{ step }}"
-              transition: "{{ trans }}"
+          - repeat:
+              count: 20
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: "{{ step }}"
+                    transition: "{{ trans }}"
+                - delay: "{{ trans }}"
 
-      # --- BUTTON 3: DIM (INITIAL & REPEAT) ---
+      # BUTTON 3 (DUNKLER - LOOP STARTET BEI INITIAL_PRESS)
       - conditions:
           - "{{ trigger_entity == b3 }}"
-          - "{{ event_type in ['initial_press', 'repeat'] }}"
+          - "{{ event_type == 'initial_press' }}"
         sequence:
-          - service: light.turn_on
-            target: !input light_target
-            data:
-              brightness_step_pct: "{{ step * -1 }}"
-              transition: "{{ trans }}"
+          - repeat:
+              count: 20
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: "{{ step * -1 }}"
+                    transition: "{{ trans }}"
+                - delay: "{{ trans }}"
 
-      # --- BUTTON 4: CUSTOM ACTIONS ---
+      # BUTTON 4
       - conditions: "{{ trigger_entity == b4 }}"
         sequence:
           - choose:
