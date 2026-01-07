@@ -1,0 +1,127 @@
+blueprint:
+  name: "Hue Dimmer V2 (RWL022) - Ein-Klick-Steuerung"
+  description: >
+    Wähle einmal das Gerät und einmal das Licht. 
+    Button 1: Toggle / Button 2+3: Dimmen (5%) / Button 4 & Button 1 Long: Frei belegbar.
+  domain: automation
+  input:
+    remote_device:
+      name: Hue Dimmer Switch
+      description: Wähle den Schalter aus (Das Gerät, nicht die Entität).
+      selector:
+        device:
+          integration: hue
+          model: RWL022
+          multiple: false
+    light_target:
+      name: Licht / Gruppe
+      description: Die Lichter, die gesteuert werden sollen.
+      selector:
+        target:
+          entity:
+            domain: light
+    button_1_long:
+      name: Button 1 (Ein) - Langer Druck
+      default: []
+      selector: { action: {} }
+    button_4_short:
+      name: Button 4 (Hue Logo) - Kurzer Druck
+      default: []
+      selector: { action: {} }
+    button_4_long:
+      name: Button 4 (Hue Logo) - Langer Druck
+      default: []
+      selector: { action: {} }
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  # Button 1: On/Top
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: short_release
+    subtype: button_1
+    id: "b1_short"
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: long_press
+    subtype: button_1
+    id: "b1_long"
+  # Button 2: Dim Up
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: initial_press
+    subtype: button_2
+    id: "b2_dim"
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: repeat
+    subtype: button_2
+    id: "b2_dim"
+  # Button 3: Dim Down
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: initial_press
+    subtype: button_3
+    id: "b3_dim"
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: repeat
+    subtype: button_3
+    id: "b3_dim"
+  # Button 4: Hue Logo
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: short_release
+    subtype: button_4
+    id: "b4_short"
+  - platform: device
+    device_id: !input remote_device
+    domain: hue
+    type: long_press
+    subtype: button_4
+    id: "b4_long"
+
+action:
+  - choose:
+      # Button 1: Toggle
+      - conditions: "{{ trigger.id == 'b1_short' }}"
+        sequence:
+          - service: light.toggle
+            target: !input light_target
+      
+      # Button 1: Custom Long
+      - conditions: "{{ trigger.id == 'b1_long' }}"
+        sequence: !input button_1_long
+
+      # Button 2: Heller (5%)
+      - conditions: "{{ trigger.id == 'b2_dim' }}"
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_step_pct: 5
+
+      # Button 3: Dunkler (5%)
+      - conditions: "{{ trigger.id == 'b3_dim' }}"
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_step_pct: -5
+
+      # Button 4: Custom Short
+      - conditions: "{{ trigger.id == 'b4_short' }}"
+        sequence: !input button_4_short
+
+      # Button 4: Custom Long
+      - conditions: "{{ trigger.id == 'b4_long' }}"
+        sequence: !input button_4_long
