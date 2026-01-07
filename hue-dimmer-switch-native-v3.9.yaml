@@ -162,14 +162,15 @@ action:
       - conditions: "{{ trigger.id == '1_l' }}"
         sequence: !input button_1_long
 
-      # BUTTON 2: Brightness Increase
+      # BUTTON 2: Brightness Increase - Short Press
       - conditions: "{{ trigger.id == '2_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
             
-              brightness_step_pct: !input brightness_step
+              brightness_step_pct: "{{ brightness_step | int }}"
 
+      # BUTTON 2: Brightness Increase - Long Hold (Smooth)
       - conditions: "{{ trigger.id == '2_h' }}"
         sequence:
           - repeat:
@@ -180,19 +181,20 @@ action:
                 - service: light.turn_on
                   target: !input target_light
                   
-                    brightness_step_pct: !input brightness_step
-                    transition: !input dimming_interval
+                    brightness_step_pct: "{{ brightness_step | int }}"
+                    transition: "{{ dimming_interval }}"
                 - delay:
                     milliseconds: "{{ (dimming_interval * 1000) | int }}"
 
-      # BUTTON 3: Brightness Decrease
+      # BUTTON 3: Brightness Decrease - Short Press
       - conditions: "{{ trigger.id == '3_s' }}"
         sequence:
           - service: light.turn_on
             target: !input target_light
             
-              brightness_step_pct: "{{ -(brightness_step) }}"
+              brightness_step_pct: "{{ -(brightness_step | int) }}"
 
+      # BUTTON 3: Brightness Decrease - Long Hold (Smooth)
       - conditions: "{{ trigger.id == '3_h' }}"
         sequence:
           - repeat:
@@ -203,8 +205,8 @@ action:
                 - service: light.turn_on
                   target: !input target_light
                   
-                    brightness_step_pct: "{{ -(brightness_step) }}"
-                    transition: !input dimming_interval
+                    brightness_step_pct: "{{ -(brightness_step | int) }}"
+                    transition: "{{ dimming_interval }}"
                 - delay:
                     milliseconds: "{{ (dimming_interval * 1000) | int }}"
 
