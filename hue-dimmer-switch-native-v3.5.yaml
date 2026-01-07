@@ -1,9 +1,9 @@
 blueprint:
-  name: Native Hue - RWL022 Complete (Short, Long & Smooth)
+  name: Native Hue - RWL022 Full Config (Smooth Dimming)
   description: |
-    Control anything with your Hue Dimmer (RWL022) via Native Hue.
-    - Buttons 1-4: Configure Short and Long press.
-    - Buttons 2-3: Hold to dim smoothly (this is the Long Press action).
+    Control lights with a Philips Hue Dimmer Switch (RWL022) via NATIVE Hue integration.
+    - Buttons 1 & 4: Support Short and Long Press.
+    - Buttons 2 & 3: Support Short Press and Smooth Dimming (Hold).
   domain: automation
   input:
     device:
@@ -12,17 +12,18 @@ blueprint:
         device:
           filter:
             - integration: hue
+          # Hides lamps by requiring a battery sensor
           entity:
             domain: sensor
             device_class: battery
     target_light:
-      name: Light(s) for smooth dimming (Buttons 2 & 3)
+      name: Light(s) for smooth dimming
       selector:
         target:
           entity:
             domain: light
 
-    # BUTTON 1
+    # ACTIONS
     button_1_short:
       name: "Button 1 (Power) - Short Press"
       default: []
@@ -33,23 +34,16 @@ blueprint:
       default: []
       selector:
         action:
-
-    # BUTTON 2 (Brighten)
     button_2_short:
       name: "Button 2 (Brighten) - Short Press"
       default: []
       selector:
         action:
-    # No Long Press selector for 2 & 3 because "Hold" is used for smooth dimming logic
-
-    # BUTTON 3 (Dim)
     button_3_short:
       name: "Button 3 (Dim) - Short Press"
       default: []
       selector:
         action:
-
-    # BUTTON 4 (Hue Logo)
     button_4_short:
       name: "Button 4 (Hue Logo) - Short Press"
       default: []
@@ -61,11 +55,11 @@ blueprint:
       selector:
         action:
 
-mode: restart # Essential for stopping dimming loops
+mode: restart # Stopping dimming loops on any new button event
 max_exceeded: silent
 
 trigger:
-  # All Short Releases
+  # SHORT RELEASES
   - platform: device
     domain: hue
     device_id: !input device
@@ -91,7 +85,7 @@ trigger:
     subtype: 4
     id: "4_short"
 
-  # All Long Releases
+  # LONG RELEASES
   - platform: device
     domain: hue
     device_id: !input device
@@ -105,7 +99,7 @@ trigger:
     subtype: 4
     id: "4_long"
 
-  # Initial Presses for Dimming Loops
+  # HOLD FOR DIMMING (Initial Press)
   - platform: device
     domain: hue
     device_id: !input device
@@ -127,7 +121,7 @@ action:
       - conditions: "{{ trigger.id == '1_long' }}"
         sequence: !input button_1_long
 
-      # BUTTON 2 (Brighten)
+      # BUTTON 2 (Smooth Brighten)
       - conditions: "{{ trigger.id == '2_short' }}"
         sequence: !input button_2_short
       - conditions: "{{ trigger.id == '2_hold' }}"
@@ -144,7 +138,7 @@ action:
                     transition: 0.5
                 - delay: 0.5
 
-      # BUTTON 3 (Dim)
+      # BUTTON 3 (Smooth Dim)
       - conditions: "{{ trigger.id == '3_short' }}"
         sequence: !input button_3_short
       - conditions: "{{ trigger.id == '3_hold' }}"
