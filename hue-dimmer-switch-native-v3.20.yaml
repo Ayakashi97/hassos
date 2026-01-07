@@ -9,9 +9,10 @@ blueprint:
       selector:
         device:
           filter:
-            - entity:
-                - domain: sensor
-                  device_class: battery
+            integration: hue
+          entity:
+            domain: sensor
+            device_class: battery
     target_light:
       name: Ziel-Lampen
       selector:
