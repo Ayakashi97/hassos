@@ -1,20 +1,24 @@
 blueprint:
-  name: Native Hue - Philips Hue Dimmer Switch RWL022
+  name: Native Hue - Philips Hue Dimmer Switch RWL022 (Final)
   description: |
-    Control your home using the Philips Hue Dimmer Switch (v2 / RWL022) via the NATIVE Hue integration.
+    Control anything using a Philips Hue Dimmer Switch (RWL022) via the NATIVE Hue integration.
+    This uses a strict multi-filter to show ONLY the RWL022 and exclude all lamps.
     
-    This version solves the 'No devices found' issue by filtering for Hue devices with battery sensors, 
-    effectively hiding all lamps and finding your remote.
-    Supported: Short Press and Long Press (on release) for all 4 buttons.
+    Actions: Short Press and Long Press (on release) for all 4 buttons.
   domain: automation
   input:
-    device: # Using 'device' as requested for consistency with your Tap Dial
+    device: # Following your preferred naming
       name: Philips Hue Dimmer Switch
       selector:
         device:
           filter:
             - integration: hue
-          # The battery filter is the 'Lamp Killer': lamps have no batteries
+              manufacturer: Signify Netherlands B.V.
+              model: RWL022
+            - integration: hue
+              manufacturer: Signify Netherlands B.V.
+              model: "Hue dimmer switch (RWL022)"
+          # Double security: Lamps never have a battery entity
           entity:
             domain: sensor
             device_class: battery
@@ -84,7 +88,7 @@ trigger:
 
 action:
   - variables:
-      # Native Hue integration reports buttons 1, 2, 3, and 4
+      # Native Hue integration uses button subtypes 1, 2, 3, 4
       button_id: "{{ trigger.subtype }}"
       press_type: "{{ trigger.id }}"
 
