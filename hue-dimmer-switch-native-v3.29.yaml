@@ -92,7 +92,7 @@ action:
             target: !input light_target
             data:
               brightness_step_pct: 2.5
-              transition: 0.1
+              transition: 0.5
 
       # BUTTON 3 (Dunkler)
       - conditions:
@@ -103,7 +103,7 @@ action:
             target: !input light_target
             data:
               brightness_step_pct: -2.5
-              transition: 0.1
+              transition: 0.5
 
       # BUTTON 4
       - conditions: "{{ trigger.id == '4' }}"
