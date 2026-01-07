@@ -20,11 +20,6 @@ blueprint:
     * **Button 4 (Bottom):** 
         * *Short & Long Press:* Fully customizable actions (e.g., Scenes, Scripts).
 
-    **Technical Implementation:**
-    * Uses Event Entities for button detection (state-based triggers).
-    * Uses `mode: restart` to instantly cancel dimming when button is released.
-    * Supports smooth transitions with configurable delays.
-
   domain: automation
   input:
     button_1_entity:
@@ -84,7 +79,6 @@ blueprint:
           step: 0.1
           unit_of_measurement: "s"
 
-    # Customizable Action Slots
     button_1_long:
       name: Button 1 (Power) - Long Press Action
       default: []
@@ -107,7 +101,6 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  # BUTTON 1: Power Toggle
   - platform: state
     entity_id: !input button_1_entity
     to: "short_release"
@@ -118,7 +111,6 @@ trigger:
     to: "long_release"
     id: "1_l"
 
-  # BUTTON 2: Brighten
   - platform: state
     entity_id: !input button_2_entity
     to: "short_release"
@@ -129,7 +121,6 @@ trigger:
     to: "initial_press"
     id: "2_h"
 
-  # BUTTON 3: Dim
   - platform: state
     entity_id: !input button_3_entity
     to: "short_release"
@@ -140,7 +131,6 @@ trigger:
     to: "initial_press"
     id: "3_h"
 
-  # BUTTON 4: Custom Actions
   - platform: state
     entity_id: !input button_4_entity
     to: "short_release"
@@ -168,7 +158,7 @@ action:
           - service: light.turn_on
             target: !input target_light
             
-              brightness_step_pct: "{{ brightness_step | int }}"
+              brightness_step_pct: 10
 
       # BUTTON 2: Brightness Increase - Long Hold (Smooth)
       - conditions: "{{ trigger.id == '2_h' }}"
@@ -181,10 +171,10 @@ action:
                 - service: light.turn_on
                   target: !input target_light
                   
-                    brightness_step_pct: "{{ brightness_step | int }}"
-                    transition: "{{ dimming_interval }}"
+                    brightness_step_pct: 10
+                    transition: 0.5
                 - delay:
-                    milliseconds: "{{ (dimming_interval * 1000) | int }}"
+                    milliseconds: 500
 
       # BUTTON 3: Brightness Decrease - Short Press
       - conditions: "{{ trigger.id == '3_s' }}"
@@ -192,7 +182,7 @@ action:
           - service: light.turn_on
             target: !input target_light
             
-              brightness_step_pct: "{{ -(brightness_step | int) }}"
+              brightness_step_pct: -10
 
       # BUTTON 3: Brightness Decrease - Long Hold (Smooth)
       - conditions: "{{ trigger.id == '3_h' }}"
@@ -205,10 +195,10 @@ action:
                 - service: light.turn_on
                   target: !input target_light
                   
-                    brightness_step_pct: "{{ -(brightness_step | int) }}"
-                    transition: "{{ dimming_interval }}"
+                    brightness_step_pct: -10
+                    transition: 0.5
                 - delay:
-                    milliseconds: "{{ (dimming_interval * 1000) | int }}"
+                    milliseconds: 500
 
       # BUTTON 4: Custom Actions
       - conditions: "{{ trigger.id == '4_s' }}"
