@@ -1,0 +1,109 @@
+blueprint:
+  name: Hue - Philips Hue Dimmer Switch Config (Official Integration)
+  description: |
+    Steuerung für den Philips Hue Dimmer Switch über die offizielle Hue Integration.
+    Unterstützt Kurzes Drücken und langes Halten (Release).
+    
+    Hinweis: Die Hue Integration unterstützt nativ keine 'Double Press' Events. 
+    Diese Slots bleiben in der Konfiguration vorhanden, werden aber ohne zusätzliche Logik nicht ausgelöst.
+  domain: automation
+  input:
+    remote:
+      name: Philips Hue Dimmer Switch
+      description: Wähle den Dimmer Switch aus (Hue Integration)
+      selector:
+        device:
+          integration: hue
+          manufacturer: Signify Netherlands B.V.
+          model: RWL021 # Gilt auch für RWL020
+          
+# inputs für custom actions
+    button_on_short_press:
+      name: An (Button 1) - Kurz drücken
+      default: []
+      selector:
+        action:
+    button_on_long_press:
+      name: An (Button 1) - Lange halten (Release)
+      default: []
+      selector:
+        action:
+
+    button_up_short_press:
+      name: Heller (Button 2) - Kurz drücken
+      default: []
+      selector:
+        action:
+    button_up_long_press:
+      name: Heller (Button 2) - Lange halten (Release)
+      default: []
+      selector:
+        action:
+
+    button_down_short_press:
+      name: Dunkler (Button 3) - Kurz drücken
+      default: []
+      selector:
+        action:
+    button_down_long_press:
+      name: Dunkler (Button 3) - Lange halten (Release)
+      default: []
+      selector:
+        action:
+
+    button_off_short_press:
+      name: Aus (Button 4) - Kurz drücken
+      default: []
+      selector:
+        action:
+    button_off_long_press:
+      name: Aus (Button 4) - Lange halten (Release)
+      default: []
+      selector:
+        action:
+
+mode: parallel
+max_exceeded: silent
+
+trigger:
+  - platform: device
+    domain: hue
+    device_id: !input remote
+    type: remote_button_short_release
+    id: "short"
+  - platform: device
+    domain: hue
+    device_id: !input remote
+    type: remote_button_long_release
+    id: "long"
+
+action:
+  - variables:
+      # Die Hue Integration liefert bei Device-Triggern den Subtype (Button-Nummer)
+      button_id: "{{ trigger.event.data.subtype if trigger.platform == 'event' else trigger.subtype }}"
+      press_type: "{{ trigger.id }}"
+
+  - choose:
+      # Button 1: ON
+      - conditions: "{{ button_id == 1 and press_type == 'short' }}"
+        sequence: !input button_on_short_press
+      - conditions: "{{ button_id == 1 and press_type == 'long' }}"
+        sequence: !input button_on_long_press
+
+      # Button 2: UP
+      - conditions: "{{ button_id == 2 and press_type == 'short' }}"
+        sequence: !input button_up_short_press
+      - conditions: "{{ button_id == 2 and press_type == 'long' }}"
+        sequence: !input button_up_long_press
+
+      # Button 3: DOWN
+      - conditions: "{{ button_id == 3 and press_type == 'short' }}"
+        sequence: !input button_down_short_press
+      - conditions: "{{ button_id == 3 and press_type == 'long' }}"
+        sequence: !input button_down_long_press
+
+      # Button 4: OFF
+      - conditions: "{{ button_id == 4 and press_type == 'short' }}"
+        sequence: !input button_off_short_press
+      - conditions: "{{ button_id == 4 and press_type == 'long' }}"
+        sequence: !input button_off_long_press
