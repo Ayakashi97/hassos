@@ -84,69 +84,69 @@ trigger:
 
 action:
   - choose:
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn1_short' }}"
-      sequence:
-      - service: light.toggle
-        target: !input target_light
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn1_long' }}"
-      sequence: !input button_1_long
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn2_short' }}"
-      sequence:
-      - service: light.turn_on
-        target: !input target_light
-        
-          brightness_step_pct: 10
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn2_long' }}"
-      sequence:
-      - repeat:
-          while:
+      - conditions:
           - condition: template
-            value_template: "{{ true }}"
-          sequence:
+            value_template: "{{ trigger.id == 'btn1_short' }}"
+        sequence:
+          - service: light.toggle
+            target: !input target_light
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn1_long' }}"
+        sequence: !input button_1_long
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn2_short' }}"
+        sequence:
           - service: light.turn_on
             target: !input target_light
             
               brightness_step_pct: 10
-              transition: 0.5
-          - delay:
-              milliseconds: 500
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn3_short' }}"
-      sequence:
-      - service: light.turn_on
-        target: !input target_light
-        
-          brightness_step_pct: -10
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn3_long' }}"
-      sequence:
-      - repeat:
-          while:
+      - conditions:
           - condition: template
-            value_template: "{{ true }}"
-          sequence:
+            value_template: "{{ trigger.id == 'btn2_long' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ true }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input target_light
+                  
+                    brightness_step_pct: 10
+                    transition: 0.5
+                - delay:
+                    milliseconds: 500
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn3_short' }}"
+        sequence:
           - service: light.turn_on
             target: !input target_light
             
               brightness_step_pct: -10
-              transition: 0.5
-          - delay:
-              milliseconds: 500
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn4_short' }}"
-      sequence: !input button_4_short
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id == 'btn4_long' }}"
-      sequence: !input button_4_long
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn3_long' }}"
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ true }}"
+              sequence:
+                - service: light.turn_on
+                  target: !input target_light
+                  
+                    brightness_step_pct: -10
+                    transition: 0.5
+                - delay:
+                    milliseconds: 500
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn4_short' }}"
+        sequence: !input button_4_short
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'btn4_long' }}"
+        sequence: !input button_4_long
