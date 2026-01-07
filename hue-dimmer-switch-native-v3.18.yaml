@@ -3,13 +3,17 @@ blueprint:
   description: Wähle nur den Schalter aus. Erwartet die offizielle Philips Hue Integration.
   domain: automation
   input:
-    hue_device:
-      name: Hue Dimmer Switch
-      description: Wähle den Philips Hue Dimmer Schalter (v2) aus.
+    device:
+      name: Philips Hue Dimmer Switch
       selector:
         device:
           filter:
-            - model: RWL022
+            - integration: hue
+          # This entity check removes all lamps (Bedroom 1-5) from the list
+          entity:
+            domain: sensor
+            device_class: battery
+
     target_light:
       name: Ziel-Lampen
       selector:
