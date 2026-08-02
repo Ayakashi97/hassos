@@ -1,10 +1,9 @@
 blueprint:
-  name: Native Hue Tap Dial - Lights & Dimming Only
+  name: Native Hue Tap Dial - Smart Select & Toggle
   description: >
     Control 4 different lights (or groups) with a Philips Hue Tap Dial via the Native Hue integration. 
-    Pressing a button toggles the respective light. Rotating the dial dims the *last selected light*.
-
-    **Requirement:** Create an `input_text` helper (Settings > Devices & Services > Helpers) and select it below so the switch can remember which light to dim.
+    First press selects the light and turns it on. Pressing the button again toggles it off.
+    Rotating the dial dims the *last selected light*.
   domain: automation
   input:
     device:
@@ -15,7 +14,6 @@ blueprint:
             - integration: hue
     helper_input:
       name: Active Light Tracker (Input Text Helper)
-      description: Required! Select the Input Text helper you created to save the active light.
       selector:
         entity:
           domain: input_text
@@ -40,7 +38,6 @@ blueprint:
         entity:
           domain: light
 
-# Restart mode ensures that fast spinning of the dial doesn't get blocked
 mode: restart
 max_exceeded: silent
 
@@ -52,19 +49,11 @@ trigger:
 
 action:
   - variables:
-      light_1: !input light_1
-      light_2: !input light_2
-      light_3: !input light_3
-      light_4: !input light_4
-      helper_input: !input helper_input
-      
-      # Extract data from the native hue_event
-      event_type: "{{ trigger.event.data.type | default('') }}"
-      event_subtype: "{{ trigger.event.data.subtype | string }}"
-      event_steps: "{{ trigger.event.data.steps | default(45) | int }}"
-      
-      # Calculate brightness step percentage (Hue outputs high step numbers. steps/15 scales it perfectly to 1-100%)
-      step_pct: "{{ (event_steps / 15) | round(0, 'ceil') | int }}"
+      configured_helper: !input helper_input
+      l1: !input light_1
+      l2: !input light_2
+      l3: !input light_3
+      l4: !input light_4
 
   - choose:
       # ==============================
@@ -72,91 +61,127 @@ action:
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'initial_press' and event_subtype == '1' }}"
+            value_template: "{{ trigger.event.data.type == 'initial_press' and trigger.event.data.subtype | int == 1 }}"
         sequence:
-          - service: input_text.set_value
-            target:
-              entity_id: !input helper_input
-            data:
-              value: !input light_1
-          - service: light.toggle
-            target:
-              entity_id: !input light_1
+          - if:
+              - condition: template
+                value_template: "{{ states(configured_helper) == l1 }}"
+            then:
+              - service: light.toggle
+                target:
+                  entity_id: !input light_1
+            else:
+              - service: input_text.set_value
+                target:
+                  entity_id: !input helper_input
+                data:
+                  value: !input light_1
+              - service: light.turn_on
+                target:
+                  entity_id: !input light_1
 
       # ==============================
       # BUTTON 2
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'initial_press' and event_subtype == '2' }}"
+            value_template: "{{ trigger.event.data.type == 'initial_press' and trigger.event.data.subtype | int == 2 }}"
         sequence:
-          - service: input_text.set_value
-            target:
-              entity_id: !input helper_input
-            data:
-              value: !input light_2
-          - service: light.toggle
-            target:
-              entity_id: !input light_2
+          - if:
+              - condition: template
+                value_template: "{{ states(configured_helper) == l2 }}"
+            then:
+              - service: light.toggle
+                target:
+                  entity_id: !input light_2
+            else:
+              - service: input_text.set_value
+                target:
+                  entity_id: !input helper_input
+                data:
+                  value: !input light_2
+              - service: light.turn_on
+                target:
+                  entity_id: !input light_2
 
       # ==============================
       # BUTTON 3
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'initial_press' and event_subtype == '3' }}"
+            value_template: "{{ trigger.event.data.type == 'initial_press' and trigger.event.data.subtype | int == 3 }}"
         sequence:
-          - service: input_text.set_value
-            target:
-              entity_id: !input helper_input
-            data:
-              value: !input light_3
-          - service: light.toggle
-            target:
-              entity_id: !input light_3
+          - if:
+              - condition: template
+                value_template: "{{ states(configured_helper) == l3 }}"
+            then:
+              - service: light.toggle
+                target:
+                  entity_id: !input light_3
+            else:
+              - service: input_text.set_value
+                target:
+                  entity_id: !input helper_input
+                data:
+                  value: !input light_3
+              - service: light.turn_on
+                target:
+                  entity_id: !input light_3
 
       # ==============================
       # BUTTON 4
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'initial_press' and event_subtype == '4' }}"
+            value_template: "{{ trigger.event.data.type == 'initial_press' and trigger.event.data.subtype | int == 4 }}"
         sequence:
-          - service: input_text.set_value
-            target:
-              entity_id: !input helper_input
-            data:
-              value: !input light_4
-          - service: light.toggle
-            target:
-              entity_id: !input light_4
+          - if:
+              - condition: template
+                value_template: "{{ states(configured_helper) == l4 }}"
+            then:
+              - service: light.toggle
+                target:
+                  entity_id: !input light_4
+            else:
+              - service: input_text.set_value
+                target:
+                  entity_id: !input helper_input
+                data:
+                  value: !input light_4
+              - service: light.turn_on
+                target:
+                  entity_id: !input light_4
 
       # ==============================
       # DIAL: CLOCKWISE (Dim Up)
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_subtype == 'clock_wise' }}"
+            value_template: "{{ trigger.event.data.subtype == 'clock_wise' and trigger.event.data.steps is defined }}"
           - condition: template
-            value_template: "{{ states(helper_input) != 'unknown' and states(helper_input) != '' }}"
+            value_template: >
+              {% set helper = states(configured_helper) %}
+              {{ helper != 'unknown' and helper != '' }}
         sequence:
           - service: light.turn_on
             target:
-              entity_id: "{{ states(helper_input) }}"
+              entity_id: "{{ states(configured_helper) }}"
             data:
-              brightness_step_pct: "{{ step_pct }}"
+              brightness_step_pct: "{{ (trigger.event.data.steps / 2.55) | round(0) | int }}"
 
       # ==============================
       # DIAL: COUNTER-CLOCKWISE (Dim Down)
       # ==============================
       - conditions:
           - condition: template
-            value_template: "{{ event_subtype == 'counter_clock_wise' }}"
+            value_template: "{{ trigger.event.data.subtype == 'counter_clock_wise' and trigger.event.data.steps is defined }}"
           - condition: template
-            value_template: "{{ states(helper_input) != 'unknown' and states(helper_input) != '' }}"
+            value_template: >
+              {% set helper = states(configured_helper) %}
+              {{ helper != 'unknown' and helper != '' }}
         sequence:
           - service: light.turn_on
             target:
-              entity_id: "{{ states(helper_input) }}"
+              entity_id: "{{ states(configured_helper) }}"
             data:
-              brightness_step_pct: "{{ step_pct * -1 }}"
+              brightness_step_pct: "{{ ((trigger.event.data.steps / 2.55) * -1) | round(0) | int }}"
