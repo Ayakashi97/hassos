@@ -1,6 +1,6 @@
 blueprint:
-  name: Hue Dimmer to Sonos (Smart Auto-Detect V2)
-  description: "Auto-detects Hue buttons. Proportional volume guaranteed minimum 2% step. Fixes string-list bug."
+  name: Hue Dimmer to Sonos (Smart Auto-Detect V3)
+  description: "Auto-detects Hue buttons. Proportional volume guaranteed minimum 2% step. Fixed loop variable bug."
   domain: automation
   input:
     controller_sensor:
@@ -64,15 +64,14 @@ action:
             value_template: "{{ trigger_entity == btn_2 }}"
         sequence:
           - repeat:
-              # Moving the list generation here perfectly protects it from becoming a string
               for_each: "{{ state_attr(sonos_player, 'group_members') or [sonos_player] }}"
               sequence:
                 - service: media_player.volume_set
                   target:
-                    entity_id: "{{ item }}"
+                    entity_id: "{{ repeat.item }}"
                   data:
                     volume_level: >
-                      {% set current = state_attr(item, 'volume_level') | float(0.0) %}
+                      {% set current = state_attr(repeat.item, 'volume_level') | float(0.0) %}
                       {% set step = current * 0.15 %}
                       {% if step < 0.02 %} {% set step = 0.02 %} {% endif %}
                       {{ [current + step, 1.0] | min | round(3) }}
@@ -87,10 +86,10 @@ action:
               sequence:
                 - service: media_player.volume_set
                   target:
-                    entity_id: "{{ item }}"
+                    entity_id: "{{ repeat.item }}"
                   data:
                     volume_level: >
-                      {% set current = state_attr(item, 'volume_level') | float(0.0) %}
+                      {% set current = state_attr(repeat.item, 'volume_level') | float(0.0) %}
                       {% set step = current * 0.15 %}
                       {% if step < 0.02 %} {% set step = 0.02 %} {% endif %}
                       {{ [current - step, 0.0] | max | round(3) }}
