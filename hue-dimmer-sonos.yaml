@@ -1,96 +1,42 @@
-blueprint:
-  name: Modern Hue Dimmer to Sonos (Event-Based)
-  description: "Controls a Sonos group with a modern Hue Dimmer switch using Event entities. Volume adjustments scale proportionally across grouped speakers!"
-  domain: automation
-  input:
-    button_1:
-      name: Button 1 Entity (Top / Play-Pause)
-      selector:
-        entity:
-          domain: event
-    button_2:
-      name: Button 2 Entity (Volume Up)
-      selector:
-        entity:
-          domain: event
-    button_3:
-      name: Button 3 Entity (Volume Down)
-      selector:
-        entity:
-          domain: event
-    button_4:
-      name: Button 4 Entity (Bottom / Playlist)
-      selector:
-        entity:
-          domain: event
-    sonos_player:
-      name: Sonos Media Player
-      description: The primary Sonos speaker to control.
-      selector:
-        entity:
-          domain: media_player
-    playlist_helper:
-      name: Playlist Input Select
-      description: The Dropdown Helper containing your Sonos favorites.
-      selector:
-        entity:
-          domain: input_select
-    volume_step:
-      name: Volume Scale Percentage
-      description: The percentage by which to scale the volume up or down.
-      default: 15
-      selector:
-        number:
-          min: 5
-          max: 100
-          unit_of_measurement: "%"
-
+alias: "Sonos Smart Controller (Hue Event Fix)"
 mode: queued
-
-variables:
-  player: !input sonos_player
-  playlist_helper: !input playlist_helper
-  vol_step: !input volume_step
-  group_members: "{{ state_attr(player, 'group_members') or [player] }}"
-
 trigger:
   - platform: state
-    entity_id: !input button_1
-    id: "play_pause"
+    entity_id: event.hue_dimmer_switch_2_button_1
+    id: play_pause
   - platform: state
-    entity_id: !input button_2
-    id: "vol_up"
+    entity_id: event.hue_dimmer_switch_2_button_2
+    id: vol_up
   - platform: state
-    entity_id: !input button_3
-    id: "vol_down"
+    entity_id: event.hue_dimmer_switch_2_button_3
+    id: vol_down
   - platform: state
-    entity_id: !input button_4
-    id: "playlist"
-
+    entity_id: event.hue_dimmer_switch_2_button_4
+    id: playlist
 action:
   - choose:
-      # --- PLAY / PAUSE ---
+      # --- PLAY / PAUSE (Button 1) ---
       - conditions:
           - condition: trigger
-            id: "play_pause"
-          # Only fire on press, ignore the release event
+            id: play_pause
+          # Only trigger when you LET GO of the button, preventing double-fires
           - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type == 'initial_press' }}"
+            value_template: "{{ trigger.to_state.attributes.event_type == 'short_release' }}"
         sequence:
           - service: media_player.media_play_pause
             target:
-              entity_id: !input sonos_player
+              entity_id: media_player.esszimmer_sonos
 
-      # --- VOLUME UP (Proportional) ---
+      # --- VOLUME UP (Button 2) ---
       - conditions:
           - condition: trigger
-            id: "vol_up"
-          # Fire on initial press AND while being held down
+            id: vol_up
+          # Triggers on release, AND smooth scales if you hold it down ('repeat')
           - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type in ['initial_press', 'repeat'] }}"
+            value_template: "{{ trigger.to_state.attributes.event_type in ['short_release', 'repeat'] }}"
         sequence:
           - repeat:
-              for_each: "{{ group_members }}"
+              for_each: "{{ state_attr('media_player.esszimmer_sonos', 'group_members') or ['media_player.esszimmer_sonos'] }}"
               sequence:
                 - service: media_player.volume_set
                   target:
@@ -98,23 +44,21 @@ action:
                   data:
                     volume_level: >
                       {% set current = state_attr(item, 'volume_level') | float(0.0) %}
-                      {% set step = (vol_step | float) / 100.0 %}
-                      {% set new_vol = current * (1.0 + step) %}
+                      {% set new_vol = current * 1.15 %}
                       {% if current < 0.02 %}
                         {% set new_vol = current + 0.02 %}
                       {% endif %}
                       {{ [new_vol, 1.0] | min | round(3) }}
 
-      # --- VOLUME DOWN (Proportional) ---
+      # --- VOLUME DOWN (Button 3) ---
       - conditions:
           - condition: trigger
-            id: "vol_down"
-          # Fire on initial press AND while being held down
+            id: vol_down
           - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type in ['initial_press', 'repeat'] }}"
+            value_template: "{{ trigger.to_state.attributes.event_type in ['short_release', 'repeat'] }}"
         sequence:
           - repeat:
-              for_each: "{{ group_members }}"
+              for_each: "{{ state_attr('media_player.esszimmer_sonos', 'group_members') or ['media_player.esszimmer_sonos'] }}"
               sequence:
                 - service: media_player.volume_set
                   target:
@@ -122,25 +66,24 @@ action:
                   data:
                     volume_level: >
                       {% set current = state_attr(item, 'volume_level') | float(0.0) %}
-                      {% set step = (vol_step | float) / 100.0 %}
-                      {% set new_vol = current * (1.0 - step) %}
+                      {% set new_vol = current * 0.85 %}
                       {{ [new_vol, 0.0] | max | round(3) }}
 
-      # --- CYCLE PLAYLISTS ---
+      # --- CYCLE PLAYLISTS (Button 4) ---
       - conditions:
           - condition: trigger
-            id: "playlist"
+            id: playlist
           - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type == 'initial_press' }}"
+            value_template: "{{ trigger.to_state.attributes.event_type == 'short_release' }}"
         sequence:
           - service: input_select.select_next
             target:
-              entity_id: !input playlist_helper
+              entity_id: input_select.sonosplaylists
           - service: media_player.select_source
             target:
-              entity_id: !input sonos_player
+              entity_id: media_player.esszimmer_sonos
             data:
-              source: "{{ states(playlist_helper) }}"
+              source: "{{ states('input_select.sonosplaylists') }}"
           - service: media_player.media_play
             target:
-              entity_id: !input sonos_player
+              entity_id: media_player.esszimmer_sonos
