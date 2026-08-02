@@ -1,6 +1,6 @@
 blueprint:
-  name: Hue Dimmer to Sonos (Smart Auto-Detect V6)
-  description: "Auto-detects Hue buttons. Configurable proportional volume. Minimum 2% step failsafe."
+  name: Hue Dimmer to Sonos (Smart Auto-Detect V7)
+  description: "Auto-detects Hue buttons. Configurable proportional volume. Default removed to FORCE the UI to display the slider."
   domain: automation
   input:
     controller_sensor:
@@ -20,9 +20,9 @@ blueprint:
         entity:
           domain: input_select
     volume_step:
-      name: Volume Step Percentage
-      description: The percentage to scale the volume up/down per click.
-      default: 15
+      name: Volume Step Percentage (REQUIRED)
+      description: You MUST set this. The percentage to scale the volume up/down per click (e.g., 15).
+      # Removed 'default:' here to force Home Assistant to show this field in the UI!
       selector:
         number:
           min: 1
