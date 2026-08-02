@@ -1,11 +1,10 @@
 blueprint:
-  name: Hue Dimmer to Sonos (Smart Auto-Detect)
-  description: "Provide your battery sensor and this blueprint automatically extracts the name to map all 4 buttons dynamically. Fixes the double-fire volume bug!"
+  name: Hue Dimmer to Sonos (Smart Auto-Detect V2)
+  description: "Auto-detects Hue buttons. Proportional volume guaranteed minimum 2% step. Fixes string-list bug."
   domain: automation
   input:
     controller_sensor:
       name: Controller Sensor
-      description: The battery sensor (e.g., sensor.hue_dimmer_switch_2_batterie)
       selector:
         entity:
           domain: sensor
@@ -24,7 +23,6 @@ mode: queued
 
 variables:
   sensor_input: !input controller_sensor
-  # Magically extracts "hue_dimmer_switch_2" from "sensor.hue_dimmer_switch_2_batterie"
   base_name: "{{ sensor_input | replace('sensor.', '') | replace('_batterie', '') | replace('_battery', '') }}"
   btn_1: "event.{{ base_name }}_button_1"
   btn_2: "event.{{ base_name }}_button_2"
@@ -32,19 +30,14 @@ variables:
   btn_4: "event.{{ base_name }}_button_4"
   sonos_player: !input sonos_player
   playlist_helper: !input playlist_helper
-  # Auto-detects all grouped speakers for proportional volume
-  group_members: "{{ state_attr(sonos_player, 'group_members') or [sonos_player] }}"
 
 trigger:
-  # Listening to the global state_changed bus to bypass HA's strict trigger limitations
   - platform: event
     event_type: state_changed
 
 condition:
-  # Filter 1: Did one of our 4 dynamically calculated buttons trigger this event?
   - condition: template
     value_template: "{{ trigger.event.data.entity_id in [btn_1, btn_2, btn_3, btn_4] }}"
-  # Filter 2: Ignore double-fires by only accepting initial press or hold repeats
   - condition: template
     value_template: >
       {{ trigger.event.data.new_state is defined and trigger.event.data.new_state.attributes.event_type in ['initial_press', 'repeat'] }}
@@ -65,13 +58,14 @@ action:
             target:
               entity_id: !input sonos_player
 
-      # --- BUTTON 2: VOLUME UP (Proportional 15% + Hold Support) ---
+      # --- BUTTON 2: VOLUME UP ---
       - conditions:
           - condition: template
             value_template: "{{ trigger_entity == btn_2 }}"
         sequence:
           - repeat:
-              for_each: "{{ group_members }}"
+              # Moving the list generation here perfectly protects it from becoming a string
+              for_each: "{{ state_attr(sonos_player, 'group_members') or [sonos_player] }}"
               sequence:
                 - service: media_player.volume_set
                   target:
@@ -79,19 +73,17 @@ action:
                   data:
                     volume_level: >
                       {% set current = state_attr(item, 'volume_level') | float(0.0) %}
-                      {% set new_vol = current * 1.15 %}
-                      {% if current < 0.02 %}
-                        {% set new_vol = current + 0.02 %}
-                      {% endif %}
-                      {{ [new_vol, 1.0] | min | round(3) }}
+                      {% set step = current * 0.15 %}
+                      {% if step < 0.02 %} {% set step = 0.02 %} {% endif %}
+                      {{ [current + step, 1.0] | min | round(3) }}
 
-      # --- BUTTON 3: VOLUME DOWN (Proportional 15% + Hold Support) ---
+      # --- BUTTON 3: VOLUME DOWN ---
       - conditions:
           - condition: template
             value_template: "{{ trigger_entity == btn_3 }}"
         sequence:
           - repeat:
-              for_each: "{{ group_members }}"
+              for_each: "{{ state_attr(sonos_player, 'group_members') or [sonos_player] }}"
               sequence:
                 - service: media_player.volume_set
                   target:
@@ -99,8 +91,9 @@ action:
                   data:
                     volume_level: >
                       {% set current = state_attr(item, 'volume_level') | float(0.0) %}
-                      {% set new_vol = current * 0.85 %}
-                      {{ [new_vol, 0.0] | max | round(3) }}
+                      {% set step = current * 0.15 %}
+                      {% if step < 0.02 %} {% set step = 0.02 %} {% endif %}
+                      {{ [current - step, 0.0] | max | round(3) }}
 
       # --- BUTTON 4: PLAYLIST CYCLE ---
       - conditions:
