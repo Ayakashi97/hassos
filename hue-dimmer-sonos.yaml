@@ -1,10 +1,11 @@
 blueprint:
-  name: Hue Dimmer to Sonos (Smart Auto-Detect V4)
-  description: "Auto-detects Hue buttons. Proportional volume math compressed to fix whitespace rejection."
+  name: Hue Dimmer to Sonos (Smart Auto-Detect V5)
+  description: "Auto-detects Hue buttons. Configurable proportional volume. Minimum 2% step failsafe."
   domain: automation
   input:
     controller_sensor:
       name: Controller Sensor
+      description: The battery sensor (e.g., sensor.hue_dimmer_switch_2_batterie)
       selector:
         entity:
           domain: sensor
@@ -18,6 +19,15 @@ blueprint:
       selector:
         entity:
           domain: input_select
+    volume_step:
+      name: Volume Step Percentage
+      description: The percentage by which to scale the volume up or down per click.
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
 
 mode: queued
 
@@ -30,6 +40,7 @@ variables:
   btn_4: "event.{{ base_name }}_button_4"
   sonos_player: !input sonos_player
   playlist_helper: !input playlist_helper
+  vol_step: !input volume_step
 
 trigger:
   - platform: event
@@ -70,7 +81,8 @@ action:
                   data:
                     volume_level: >-
                       {% set c = state_attr(repeat.item, 'volume_level') | float(0.0) %}
-                      {% set step = [c * 0.15, 0.02] | max %}
+                      {% set v_pct = (vol_step | float) / 100.0 %}
+                      {% set step = [c * v_pct, 0.02] | max %}
                       {{ [c + step, 1.0] | min | round(2) }}
 
       # --- BUTTON 3: VOLUME DOWN ---
@@ -87,7 +99,8 @@ action:
                   data:
                     volume_level: >-
                       {% set c = state_attr(repeat.item, 'volume_level') | float(0.0) %}
-                      {% set step = [c * 0.15, 0.02] | max %}
+                      {% set v_pct = (vol_step | float) / 100.0 %}
+                      {% set step = [c * v_pct, 0.02] | max %}
                       {{ [c - step, 0.0] | max | round(2) }}
 
       # --- BUTTON 4: PLAYLIST CYCLE ---
