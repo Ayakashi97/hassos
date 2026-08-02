@@ -1,5 +1,5 @@
 blueprint:
-  name: Hue Dimmer to Sonos (Smart Auto-Detect V5)
+  name: Hue Dimmer to Sonos (Smart Auto-Detect V6)
   description: "Auto-detects Hue buttons. Configurable proportional volume. Minimum 2% step failsafe."
   domain: automation
   input:
@@ -21,12 +21,14 @@ blueprint:
           domain: input_select
     volume_step:
       name: Volume Step Percentage
-      description: The percentage by which to scale the volume up or down per click.
+      description: The percentage to scale the volume up/down per click.
       default: 15
       selector:
         number:
           min: 1
           max: 100
+          step: 1
+          mode: slider
           unit_of_measurement: "%"
 
 mode: queued
